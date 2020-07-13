@@ -9,9 +9,7 @@ enum Token {
 }
 
 fn main() {
-    let input = String::from("let mut a z  xxx ;");
-    print!("{}", is_letter(";"));
-    print!("{}", is_letter("l"));
+    let input = String::from("let mut xxx  = 1;");
     print!("{:?}", tokenize(input));
 }
 
@@ -36,36 +34,76 @@ fn is_letter(s: &str) -> bool {
     }
 }
 
-fn get_letter(str: &String, position: i32)-> (String, i32) {
+fn is_num(s: &str) -> bool {
+    if let Some(c) = s.chars().nth(0) {
+        if c.is_numeric() {
+            true
+        } else {
+            false
+        }
+    } else {
+        false
+    }
+}
+
+fn get_letter(str: &String, position: i32) -> (String, i32) {
     let mut p = position;
     loop {
         let c = get_char(str, p);
         if is_letter(&c) {
             p += 1;
         } else {
-            return (str[position as usize..p as usize].to_string(), p)
+            return (str[position as usize..p as usize].to_string(), p);
         }
     }
 }
 
-fn tokenize(str: String)-> Vec<Token> {
+fn get_num(str: &String, position: i32) -> (String, i32) {
+    let mut p = position;
+    loop {
+        let c = get_char(str, p);
+        if is_num(&c) {
+            p += 1;
+        } else {
+            return (str[position as usize..p as usize].to_string(), p);
+        }
+    }
+}
+
+fn tokenize(str: String) -> Vec<Token> {
     let mut p = 0;
-    let mut tokens: Vec<Token> = vec!();
+    let mut tokens: Vec<Token> = vec![];
     loop {
         let c = get_char(&str, p);
         if p >= str.len() as i32 {
-            return tokens
+            return tokens;
         }
         if c.is_empty() {
-            return tokens
+            return tokens;
         }
         if is_letter(&c) {
             let (letter, pss) = get_letter(&str, p);
             tokens.push(Token::Var(letter));
             p = pss;
         } else {
-            p += 1;
+            if c == String::from(" ") {
+                p += 1
+            } else if c == String::from("=") {
+                tokens.push(Token::Equal);
+                p += 1;
+            } else if c == String::from(";") {
+                tokens.push(Token::SemiColon);
+                p += 1;
+            } else {
+                if is_num(&c) {
+                    let (n, pos) = get_num(&str, p);
+                    p = pos;
+                    let n: i32 = n.parse().unwrap();
+                    tokens.push(Token::Int(n));
+                } else {
+                    p += 1;
+                }
+            }
         }
-
     }
 }
