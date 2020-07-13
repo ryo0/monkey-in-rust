@@ -9,7 +9,7 @@ enum Token {
 }
 
 fn main() {
-    let input = String::from("let mut xxx  = 1;");
+    let input = String::from("let mut xxx  = 100;");
     print!("{:?}", tokenize(input));
 }
 
@@ -85,25 +85,21 @@ fn tokenize(str: String) -> Vec<Token> {
             let (letter, pss) = get_letter(&str, p);
             tokens.push(Token::Var(letter));
             p = pss;
+        } else if c == String::from(" ") {
+            p += 1
+        } else if c == String::from("=") {
+            tokens.push(Token::Equal);
+            p += 1;
+        } else if c == String::from(";") {
+            tokens.push(Token::SemiColon);
+            p += 1;
+        } else if is_num(&c) {
+            let (n, pos) = get_num(&str, p);
+            p = pos;
+            let n: i32 = n.parse().unwrap();
+            tokens.push(Token::Int(n));
         } else {
-            if c == String::from(" ") {
-                p += 1
-            } else if c == String::from("=") {
-                tokens.push(Token::Equal);
-                p += 1;
-            } else if c == String::from(";") {
-                tokens.push(Token::SemiColon);
-                p += 1;
-            } else {
-                if is_num(&c) {
-                    let (n, pos) = get_num(&str, p);
-                    p = pos;
-                    let n: i32 = n.parse().unwrap();
-                    tokens.push(Token::Int(n));
-                } else {
-                    p += 1;
-                }
-            }
+            p += 1;
         }
     }
 }
