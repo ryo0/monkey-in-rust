@@ -1,16 +1,46 @@
-#[derive(Debug)]
+use std::collections::HashMap;
+
+#[derive(Debug, Clone)]
 enum Token {
     Let,
-    Mut,
-    Equal,
+    Fn,
+    True,
+    False,
+    If,
+    Else,
+    Return,
     Var(String),
     Int(i32),
+    Equal,
     SemiColon,
 }
 
 fn main() {
-    let input = String::from("let mut xxx  = 100;");
-    print!("{:?}", tokenize(input));
+    let reserved_words = vec![
+        String::from("let"),
+        String::from("fn"),
+        String::from("true"),
+        String::from("false"),
+        String::from("if"),
+        String::from("else"),
+        String::from("return"),
+    ];
+    let reserved_word_tokens = vec![
+        Token::Let,
+        Token::Fn,
+        Token::True,
+        Token::False,
+        Token::If,
+        Token::Else,
+        Token::Return,
+    ];
+
+    let reserved_word_map: HashMap<_, _> = reserved_words
+        .iter()
+        .zip(reserved_word_tokens.iter())
+        .collect();
+    let input = String::from("fn let xxx  = if true else return false ;");
+    print!("{:?}", tokenize(input, reserved_word_map));
 }
 
 fn get_char(str: &String, position: i32) -> String {
@@ -70,7 +100,7 @@ fn get_num(str: &String, position: i32) -> (String, i32) {
     }
 }
 
-fn tokenize(str: String) -> Vec<Token> {
+fn tokenize(str: String, reserved_word_map: HashMap<&String, &Token>) -> Vec<Token> {
     let mut p = 0;
     let mut tokens: Vec<Token> = vec![];
     loop {
@@ -83,7 +113,11 @@ fn tokenize(str: String) -> Vec<Token> {
         }
         if is_letter(&c) {
             let (letter, pss) = get_letter(&str, p);
-            tokens.push(Token::Var(letter));
+            if let Some(&reserved_token) = reserved_word_map.get(&letter) {
+                tokens.push(reserved_token.clone())
+            } else {
+                tokens.push(Token::Var(letter.clone().parse().unwrap()));
+            }
             p = pss;
         } else if c == String::from(" ") {
             p += 1
