@@ -116,7 +116,7 @@ fn tokenize(str: String, reserved_word_map: HashMap<&String, &Token>) -> Vec<Tok
             if let Some(&reserved_token) = reserved_word_map.get(&letter) {
                 tokens.push(reserved_token.clone())
             } else {
-                tokens.push(Token::Var(letter.clone().parse().unwrap()));
+                tokens.push(Token::Var(letter.clone()));
             }
             p = pss;
         } else if c == String::from(" ") {
