@@ -102,7 +102,14 @@ fn main() {
     reserved_word_tokens.append(&mut symbol_tokens);
 
     let tokens_map: HashMap<_, _> = words.iter().zip(reserved_word_tokens.iter()).collect();
-    let input = String::from("fn let xxx  = if true else return false ;");
+    let input = String::from(
+        "
+if (5 < 10) {
+    return true;
+} else {
+    return false;
+}",
+    );
     print!("{:?}", tokenize(input, tokens_map, two_words_symbol_map));
 }
 
@@ -178,10 +185,11 @@ fn tokenize(
         if c.is_empty() {
             return tokens;
         }
-        if c == String::from(" ") || c == String::from("\n") {
-            p += 1;
-        }
-        if is_letter(&c) {
+        if c == String::from("\n") {
+            p += 1
+        } else if c == String::from(" ") || c == String::from("    ") {
+            p += 1
+        } else if is_letter(&c) {
             let (letter, pss) = get_letter(&str, p);
             if let Some(&reserved_token) = token_map.get(&letter) {
                 tokens.push(reserved_token.clone())
@@ -189,23 +197,11 @@ fn tokenize(
                 tokens.push(Token::Var(letter));
             }
             p = pss;
-            if is_num(&c) {
-                let (n, pos) = get_num(&str, p);
-                p = pos;
-                let n: i32 = n.parse().unwrap();
-                tokens.push(Token::Int(n));
-            } else {
-                p += 1;
-            }
         } else if is_num(&c) {
             let (n, pos) = get_num(&str, p);
             p = pos;
             let n: i32 = n.parse().unwrap();
             tokens.push(Token::Int(n));
-        } else if c == String::from("\n") {
-            p += 1
-        } else if c == String::from(" ") {
-            p += 1
         } else if let Some(&(got_next_c, token)) = two_words_map.get(&c) {
             let next_c = if p + 1 < str.len() as i32 {
                 get_char(&str, p + 1)
@@ -222,6 +218,7 @@ fn tokenize(
             tokens.push(t.clone());
             p += 1;
         } else {
+            print!("{}, {}, {:?}", c, p, tokens);
             panic!("error");
         }
     }
