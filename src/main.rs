@@ -31,15 +31,6 @@ enum Token {
 }
 
 fn main() {
-    let two_words_symbol_first = vec![String::from("="), String::from("!")];
-    let two_words_symbol_second = vec![
-        (String::from("="), Token::Equal),
-        (String::from("="), Token::NotEqual),
-    ];
-    let two_words_symbol_map: HashMap<_, _> = two_words_symbol_first
-        .iter()
-        .zip(two_words_symbol_second.iter())
-        .collect();
     let mut symbols = vec![
         String::from("=="),
         String::from("!="),
@@ -104,13 +95,16 @@ fn main() {
     let tokens_map: HashMap<_, _> = words.iter().zip(reserved_word_tokens.iter()).collect();
     let input = String::from(
         "
+let add = fn(x, y) {
+    let a = x + y - z < w * a / b != k == d;
+};
 if (5 < 10) {
     return true;
 } else {
     return false;
 }",
     );
-    print!("{:?}", tokenize(input, tokens_map, two_words_symbol_map));
+    print!("{:?}", tokenize(input, tokens_map));
 }
 
 fn get_char(str: &String, position: i32) -> String {
@@ -170,11 +164,7 @@ fn get_num(str: &String, position: i32) -> (String, i32) {
     }
 }
 
-fn tokenize(
-    str: String,
-    token_map: HashMap<&String, &Token>,
-    two_words_map: HashMap<&String, &(String, Token)>,
-) -> Vec<Token> {
+fn tokenize(str: String, token_map: HashMap<&String, &Token>) -> Vec<Token> {
     let mut p = 0;
     let mut tokens: Vec<Token> = vec![];
     loop {
@@ -202,24 +192,25 @@ fn tokenize(
             p = pos;
             let n: i32 = n.parse().unwrap();
             tokens.push(Token::Int(n));
-        } else if let Some(&(got_next_c, token)) = two_words_map.get(&c) {
-            let next_c = if p + 1 < str.len() as i32 {
-                get_char(&str, p + 1)
-            } else {
-                panic!("error",);
-            };
-            if &next_c == got_next_c {
-                tokens.push(token.clone());
-                p += 2
-            } else {
-                panic!("error")
-            }
-        } else if let Some(&t) = token_map.get(&c) {
-            tokens.push(t.clone());
-            p += 1;
         } else {
-            print!("{}, {}, {:?}", c, p, tokens);
-            panic!("error");
+            let next_c = if p + 1 < str.len() as i32 {
+                Some(get_char(&str, p + 1))
+            } else {
+                None
+            };
+            if c == String::from("=") && next_c == Some(String::from("=")) {
+                tokens.push(Token::Equal);
+                p += 2;
+            } else if c == String::from("!") && next_c == Some(String::from("=")) {
+                tokens.push(Token::NotEqual);
+                p += 2;
+            } else {
+                if let Some(&t) = token_map.get(&c) {
+                    tokens.push(t.clone());
+                    p += 1;
+                    continue;
+                }
+            }
         }
     }
 }
