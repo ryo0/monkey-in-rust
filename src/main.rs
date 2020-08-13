@@ -136,27 +136,47 @@ fn tokenize<'a, 'b>(
 ) -> (&'a [char], &'b Vec<Token>) {
     match s {
         [first, rest @ ..] if first == &' ' || first == &'\n' => tokenize(rest, tokens, token_map),
-        [first, _rest @ ..] if first.is_alphabetic() => {
-            let (letter, rest) = get_letter(s, String::from(""));
-            match token_map.get(&letter) {
-                Some(token) => {
-                    tokens.push((*token).clone());
-                }
-                None => {
-                    tokens.push(Token::Var(letter));
-                }
-            };
+        [first, _rest @ ..] if first.is_alphabetic() => tokenize_letter(s, tokens, token_map),
+        [first, _rest @ ..] if first.is_numeric() => tokenize_num(s, tokens, token_map),
+        _ => tokenize_symbols(s, tokens, token_map),
+    }
+}
 
-            tokenize(rest, tokens, token_map)
+fn tokenize_num<'a, 'b>(
+    s: &'a [char],
+    tokens: &'b mut Vec<Token>,
+    token_map: HashMap<&String, &Token>,
+) -> (&'a [char], &'b Vec<Token>) {
+    let (num, rest) = get_num(s, String::from(""));
+    let token = num.parse::<i32>().unwrap();
+    tokens.push(Token::Int(token));
+    tokenize(rest, tokens, token_map)
+}
+
+fn tokenize_letter<'a, 'b>(
+    s: &'a [char],
+    tokens: &'b mut Vec<Token>,
+    token_map: HashMap<&String, &Token>,
+) -> (&'a [char], &'b Vec<Token>) {
+    let (letter, rest) = get_letter(s, String::from(""));
+    match token_map.get(&letter) {
+        Some(token) => {
+            tokens.push((*token).clone());
         }
-
-        [first, _rest @ ..] if first.is_numeric() => {
-            let (num, rest) = get_num(s, String::from(""));
-            let token = num.parse::<i32>().unwrap();
-            tokens.push(Token::Int(token));
-            tokenize(rest, tokens, token_map)
+        None => {
+            tokens.push(Token::Var(letter));
         }
+    };
 
+    tokenize(rest, tokens, token_map)
+}
+
+fn tokenize_symbols<'a, 'b>(
+    s: &'a [char],
+    tokens: &'b mut Vec<Token>,
+    token_map: HashMap<&String, &Token>,
+) -> (&'a [char], &'b Vec<Token>) {
+    match s {
         [first, second, rest @ ..] => match (first, second) {
             ('=', '=') | ('!', '=') => {
                 let token = match token_map.get(&format!("{}{}", first, second)) {
@@ -166,18 +186,18 @@ fn tokenize<'a, 'b>(
                 tokens.push(token.clone());
                 tokenize(rest, tokens, token_map)
             }
-            _ => match s {
-                [first, rest @ ..] => {
-                    let token = match token_map.get(&first.to_string()) {
-                        Some(token) => *token,
-                        None => panic!("token_map {} {:?}", first, rest),
-                    };
-                    tokens.push(token.clone());
-                    tokenize(rest, tokens, token_map)
-                }
-                _ => (s, tokens),
-            },
+            _ => tokenize_symbol(s, tokens, token_map),
         },
+        _ => tokenize_symbol(s, tokens, token_map),
+    }
+}
+
+fn tokenize_symbol<'a, 'b>(
+    s: &'a [char],
+    tokens: &'b mut Vec<Token>,
+    token_map: HashMap<&String, &Token>,
+) -> (&'a [char], &'b Vec<Token>) {
+    match s {
         [first, rest @ ..] => {
             let token = match token_map.get(&first.to_string()) {
                 Some(token) => *token,
