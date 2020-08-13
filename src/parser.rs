@@ -21,7 +21,6 @@ pub enum Statement {
 fn parse_exp(tokens: &[Token]) -> (Exp, &[Token]) {
     let (exp, rest) = match tokens {
         [Token::LParen, rest @ ..] => parse_exp(rest),
-        [Token::LBrace, rest @ ..] => parse_exp(rest),
         [Token::Int(n), rest @ ..] => (Exp::Int(*n), rest),
         [Token::True, rest @ ..] => (Exp::Bool(true), rest),
         [Token::False, rest @ ..] => (Exp::Bool(false), rest),
