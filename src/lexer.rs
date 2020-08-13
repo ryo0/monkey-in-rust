@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Token {
     Let,
     Fn,
@@ -30,7 +30,7 @@ pub enum Token {
     DoubleQuote,
 }
 
-pub fn start_to_tokenize(input: &str) {
+pub fn start_to_tokenize(input: &str) -> Vec<Token> {
     let mut symbols = vec![
         String::from("=="),
         String::from("!="),
@@ -94,10 +94,11 @@ pub fn start_to_tokenize(input: &str) {
     reserved_word_tokens.append(&mut symbol_tokens);
 
     let tokens_map: HashMap<_, _> = words.iter().zip(reserved_word_tokens.iter()).collect();
-    print!(
-        "{:?}",
-        tokenize(split_string(input).as_slice(), &mut Vec::new(), tokens_map)
-    );
+
+    let mut t = Vec::new();
+
+    let result = tokenize(split_string(input).as_slice(), &mut t, tokens_map).1;
+    result.clone()
 }
 
 fn split_string(s: &str) -> Vec<char> {
@@ -199,4 +200,70 @@ fn tokenize_symbol<'a, 'b>(
         }
         _ => (s, tokens),
     }
+}
+
+#[test]
+fn test_tokenize() {
+    let input = "
+  let add = fn(x, y) {
+      let a = xx_ + y_y - z < w * a / b != k == d;
+  };
+  if (5 < 10) {
+      return true;
+  } else {
+      return false;
+  }";
+    assert_eq!(
+        start_to_tokenize(input),
+        vec![
+            Token::Let,
+            Token::Var("add".to_string()),
+            Token::Assign,
+            Token::Fn,
+            Token::LParen,
+            Token::Var("x".to_string()),
+            Token::Comma,
+            Token::Var("y".to_string()),
+            Token::RParen,
+            Token::LBrace,
+            Token::Let,
+            Token::Var("a".to_string()),
+            Token::Assign,
+            Token::Var("xx_".to_string()),
+            Token::Plus,
+            Token::Var("y_y".to_string()),
+            Token::Minus,
+            Token::Var("z".to_string()),
+            Token::Lt,
+            Token::Var("w".to_string()),
+            Token::Asterisk,
+            Token::Var("a".to_string()),
+            Token::Slash,
+            Token::Var("b".to_string()),
+            Token::NotEqual,
+            Token::Var("k".to_string()),
+            Token::Equal,
+            Token::Var("d".to_string()),
+            Token::SemiColon,
+            Token::RBrace,
+            Token::SemiColon,
+            Token::If,
+            Token::LParen,
+            Token::Int(5),
+            Token::Lt,
+            Token::Int(10),
+            Token::RParen,
+            Token::LBrace,
+            Token::Return,
+            Token::True,
+            Token::SemiColon,
+            Token::RBrace,
+            Token::Else,
+            Token::LBrace,
+            Token::Return,
+            Token::False,
+            Token::SemiColon,
+            Token::RBrace,
+        ]
+    )
 }
