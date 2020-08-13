@@ -103,23 +103,14 @@ if (5 < 10) {
 } else {
     return false;
 }";
-    print!("{:?}", tokenize(split_string(input).as_slice(), tokens_map));
+    print!(
+        "{:?}",
+        tokenize(split_string(input).as_slice(), &mut Vec::new(), tokens_map)
+    );
 }
 
 fn split_string(s: &str) -> Vec<char> {
     s.chars().collect()
-}
-
-fn is_num(s: &str) -> bool {
-    if let Some(c) = s.chars().nth(0) {
-        if c.is_numeric() {
-            true
-        } else {
-            false
-        }
-    } else {
-        false
-    }
 }
 
 fn get_letter(s: &[char], acm: String) -> (String, &[char]) {
@@ -131,36 +122,70 @@ fn get_letter(s: &[char], acm: String) -> (String, &[char]) {
     }
 }
 
-fn get_num(str: &String, position: i32) -> (String, i32) {
-    let mut p = position;
-    loop {
-        let c = get_char(str, p);
-        if is_num(&c) {
-            p += 1;
-        } else {
-            return (str[position as usize..p as usize].to_string(), p);
-        }
+fn get_num(s: &[char], acm: String) -> (String, &[char]) {
+    match s {
+        [first, rest @ ..] if first.is_numeric() => get_num(rest, format!("{}{}", acm, first)),
+        _ => (acm, s),
     }
 }
 
 fn tokenize<'a, 'b>(
     s: &'a [char],
-    tokens: &Vec<&Token>,
+    tokens: &'b mut Vec<Token>,
     token_map: HashMap<&String, &Token>,
 ) -> (&'a [char], &'b Vec<Token>) {
     match s {
-        [first, rest @ ..] if first.is_alphabetic() => {
+        [first, rest @ ..] if first == &' ' || first == &'\n' => tokenize(rest, tokens, token_map),
+        [first, _rest @ ..] if first.is_alphabetic() => {
             let (letter, rest) = get_letter(s, String::from(""));
-             let token = match token_map.get(&letter) {
-                 Some(token) =>{ *token }
-                 None =>{ panic!("token_map") }
-             }
-            tokens.push(token);
+            match token_map.get(&letter) {
+                Some(token) => {
+                    tokens.push((*token).clone());
+                }
+                None => {
+                    tokens.push(Token::Var(letter));
+                }
+            };
+
             tokenize(rest, tokens, token_map)
         }
 
-        [first, rest @ ..] if first.is_numeric() => {
-            
+        [first, _rest @ ..] if first.is_numeric() => {
+            let (num, rest) = get_num(s, String::from(""));
+            let token = num.parse::<i32>().unwrap();
+            tokens.push(Token::Int(token));
+            tokenize(rest, tokens, token_map)
         }
+
+        [first, second, rest @ ..] => match (first, second) {
+            ('=', '=') | ('!', '=') => {
+                let token = match token_map.get(&format!("{}{}", first, second)) {
+                    Some(token) => *token,
+                    None => panic!("token_map"),
+                };
+                tokens.push(token.clone());
+                tokenize(rest, tokens, token_map)
+            }
+            _ => match s {
+                [first, rest @ ..] => {
+                    let token = match token_map.get(&first.to_string()) {
+                        Some(token) => *token,
+                        None => panic!("token_map {} {:?}", first, rest),
+                    };
+                    tokens.push(token.clone());
+                    tokenize(rest, tokens, token_map)
+                }
+                _ => (s, tokens),
+            },
+        },
+        [first, rest @ ..] => {
+            let token = match token_map.get(&first.to_string()) {
+                Some(token) => *token,
+                None => panic!("token_map {} {:?}", first, rest),
+            };
+            tokens.push(token.clone());
+            tokenize(rest, tokens, token_map)
+        }
+        _ => (s, tokens),
     }
 }
