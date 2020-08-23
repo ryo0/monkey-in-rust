@@ -65,14 +65,16 @@ fn parse_exp(tokens: &[Token], p: Precedence) -> (Exp, &[Token]) {
         },
         _ => panic!("error prefix exp"),
     };
+    println!("rest: {:?}", rest);
     parse_exp_core(rest, left, p)
 }
 
 fn parse_exp_core(tokens: &[Token], left: Exp, p: Precedence) -> (Exp, &[Token]) {
     match tokens {
         [Token::SemiColon, rest @ ..] => (left, rest),
-        [first, _] => {
+        [first, _rest @ ..] => {
             let precedence = get_precedence(first);
+            println!("first: {:?}", first);
             if p < precedence {
                 let (result, rest) = match first {
                     Token::Plus
@@ -86,12 +88,17 @@ fn parse_exp_core(tokens: &[Token], left: Exp, p: Precedence) -> (Exp, &[Token])
                     Token::LParen => parse_grouped_exp(tokens),
                     _ => (left, tokens),
                 };
+                print!("result: {:?}", result);
                 parse_exp_core(rest, result, precedence)
             } else {
                 (left, tokens)
             }
         }
-        _ => (left, tokens),
+
+        _ => {
+            println!("else match: {:?}", tokens);
+            (left, tokens)
+        }
     }
 }
 
@@ -113,6 +120,7 @@ fn convert_op_token(token: &Token) -> Operator {
         Token::NotEqual => Operator::NotEqual,
         Token::Bang => Operator::Bang,
         _ => {
+            print!("{:?}", token);
             panic!("error");
         }
     }
@@ -177,7 +185,22 @@ fn test_parse_exp() {
             op: Operator::Plus,
             right: Box::new(Exp::Int(2)),
         }
-    )
+    );
+    let input = "1 + (2 + 3);";
+    let tokens = start_to_tokenize(input);
+    let (result, _) = parse_exp(tokens.as_slice(), Precedence::LOWEST);
+    assert_eq!(
+        result,
+        Exp::InfixExp {
+            left: Box::new(Exp::Int(1)),
+            op: Operator::Plus,
+            right: Box::new(Exp::InfixExp {
+                left: Box::new(Exp::Int(2)),
+                op: Operator::Plus,
+                right: Box::new(Exp::Int(3)),
+            }),
+        }
+    );
 }
 
 // fn parse_let(tokens: &[Token]) -> (Statement, &[Token]) {
