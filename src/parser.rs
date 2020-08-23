@@ -226,21 +226,21 @@ fn test_parse_exp() {
     );
 }
 
-// fn parse_let(tokens: &[Token]) -> (Statement, &[Token]) {
-//     match tokens {
-//         [Token::Let, Token::Var(s), Token::Assign, rest @ ..] => {
-//             let (exp, rest) = parse_exp(rest);
-//             (
-//                 Statement::Let {
-//                     id: Exp::Var(s.clone()),
-//                     value: exp,
-//                 },
-//                 rest,
-//             )
-//         }
-//         _ => panic!("let error"),
-//     }
-// }
+fn parse_let(tokens: &[Token]) -> (Statement, &[Token]) {
+    match tokens {
+        [Token::Let, Token::Var(s), Token::Assign, rest @ .., Token::SemiColon] => {
+            let (exp, rest) = parse_exp(rest, Precedence::LOWEST);
+            (
+                Statement::Let {
+                    id: Exp::Var(s.clone()),
+                    value: exp,
+                },
+                rest,
+            )
+        }
+        _ => panic!("let error"),
+    }
+}
 
 fn parse_if(tokens: &[Token]) -> (Exp, &[Token]) {
     match tokens {
@@ -300,22 +300,23 @@ fn parse_if(tokens: &[Token]) -> (Exp, &[Token]) {
     }
 }
 
-// #[test]
-// fn test_parse_let() {
-//     let input = "let x = 2;";
-//     let tokens = start_to_tokenize(input);
-//     let result = parse_let(&tokens);
-//     assert_eq!(
-//         result,
-//         (
-//             Statement::Let {
-//                 id: Exp::Var("x".to_string()),
-//                 value: Exp::Int(2)
-//             },
-//             Vec::new().as_slice(),
-//         )
-//     )
-// }
+#[test]
+fn test_parse_let() {
+    let input = "let x = 2;";
+    let tokens = start_to_tokenize(input);
+    let result = parse_let(&tokens);
+    assert_eq!(
+        result,
+        (
+            Statement::Let {
+                id: Exp::Var("x".to_string()),
+                value: Exp::Int(2)
+            },
+            Vec::new().as_slice(),
+        )
+    )
+}
+
 #[test]
 fn test_parse_if() {
     let input = "
