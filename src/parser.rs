@@ -1,5 +1,16 @@
-use crate::lexer::start_to_tokenize;
 use crate::lexer::Token;
+use std::collections::HashMap;
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum Operator {
+    Plus,
+    Minus,
+    Asterisk,
+    Slash,
+    Bang,
+    Equal,
+    NotEqual,
+}
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Exp {
@@ -11,6 +22,15 @@ pub enum Exp {
         then_exp: Box<Exp>,
         else_exp: Box<Option<Exp>>,
     },
+    PrefixExp {
+        op: Operator,
+        right: Box<Exp>,
+    },
+    InfixExp {
+        left: Box<Exp>,
+        op: Operator,
+        right: Box<Exp>,
+    },
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -18,7 +38,68 @@ pub enum Statement {
     Let { id: Exp, value: Exp },
 }
 
-fn parse_exp(tokens: &[Token]) -> (Exp, &[Token]) {
+#[derive(Debug, PartialEq, PartialOrd)]
+pub enum Precedence {
+    LOWEST,
+    EQUALS,      // ==
+    LESSGREATER, // > or <
+    SUM,         // +
+    PRODUCT,     // *
+    PREFIX,      // -X or !X
+    CALL,        // my_cunction(x){}
+    LBRACKET,    // []
+}
+
+type prefix_fns_type = Box<dyn Fn(&[Token]) -> (Exp, &[Token])>;
+type infix_fns_type = Box<dyn Fn(&[Token], Precedence, Exp) -> (Exp, &[Token])>;
+
+fn start_to_parse() {
+    let mut prefix_parse_fns: HashMap<Token, prefix_fns_type> = HashMap::new();
+    prefix_parse_fns.insert(Token::Bang, Box::new(parse_prefix_exp));
+    prefix_parse_fns.insert(Token::Minus, Box::new(parse_prefix_exp));
+    prefix_parse_fns.insert(Token::LParen, Box::new(parse_grouped_exp));
+    let mut infix_parse_fns: HashMap<Token, infix_fns_type> = HashMap::new();
+}
+
+fn parse_grouped_exp(tokens: &[Token]) -> (Exp, &[Token]) {
+    let (exp, rest) = parse_exp(tokens, Precedence::LOWEST);
+    match rest {
+        [Token::RParen, rest @ ..] => (exp, rest),
+        _ => panic!("error: かっこが閉じてない"),
+    }
+}
+
+fn convert_op_token(token: &Token) -> Operator {
+    match token {
+        Token::Plus => Operator::Plus,
+        Token::Minus => Operator::Minus,
+        Token::Asterisk => Operator::Asterisk,
+        Token::Slash => Operator::Slash,
+        Token::Equal => Operator::Equal,
+        Token::NotEqual => Operator::NotEqual,
+        Token::Bang => Operator::Bang,
+        _ => {
+            panic!("error");
+        }
+    }
+}
+
+fn parse_prefix_exp(tokens: &[Token]) -> (Exp::PrefixExp, &[Token]) {
+    match tokens {
+        [first ,rest @..] => {
+            let op = convert_op_token(first);
+            let (exp, rest) = parse_exp(rest, Precedence::PREFIX);
+            let p = Exp::PrefixExp{op: op, right: exp};
+            (exp, rest)
+            }
+            _ => {
+                panic!("error");
+            }
+        }
+    }
+}
+
+fn parse_exp(tokens: &[Token], p: Precedence) -> (Exp, &[Token]) {
     let (exp, rest) = match tokens {
         [Token::LParen, rest @ ..] => parse_exp(rest),
         [Token::Int(n), rest @ ..] => (Exp::Int(*n), rest),
