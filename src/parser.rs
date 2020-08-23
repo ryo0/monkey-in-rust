@@ -186,6 +186,7 @@ fn test_parse_exp() {
             right: Box::new(Exp::Int(2)),
         }
     );
+
     let input = "1 + (2 + 3);";
     let tokens = start_to_tokenize(input);
     let (result, _) = parse_exp(tokens.as_slice(), Precedence::LOWEST);
@@ -198,6 +199,28 @@ fn test_parse_exp() {
                 left: Box::new(Exp::Int(2)),
                 op: Operator::Plus,
                 right: Box::new(Exp::Int(3)),
+            }),
+        }
+    );
+
+    let input = "-1 - 2 * -3;";
+    let tokens = start_to_tokenize(input);
+    let (result, _) = parse_exp(tokens.as_slice(), Precedence::LOWEST);
+    assert_eq!(
+        result,
+        Exp::InfixExp {
+            left: Box::new(Exp::PrefixExp {
+                op: Operator::Minus,
+                right: Box::new(Exp::Int(1))
+            }),
+            op: Operator::Minus,
+            right: Box::new(Exp::InfixExp {
+                left: Box::new(Exp::Int(2)),
+                op: Operator::Asterisk,
+                right: Box::new(Exp::PrefixExp {
+                    op: Operator::Minus,
+                    right: Box::new(Exp::Int(3))
+                }),
             }),
         }
     );
