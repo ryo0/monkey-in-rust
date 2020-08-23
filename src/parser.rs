@@ -84,17 +84,49 @@ fn convert_op_token(token: &Token) -> Operator {
     }
 }
 
-fn parse_prefix_exp(tokens: &[Token]) -> (Exp::PrefixExp, &[Token]) {
+fn parse_prefix_exp(tokens: &[Token]) -> (Exp, &[Token]) {
     match tokens {
-        [first ,rest @..] => {
+        [first, rest @ ..] => {
             let op = convert_op_token(first);
             let (exp, rest) = parse_exp(rest, Precedence::PREFIX);
-            let p = Exp::PrefixExp{op: op, right: exp};
-            (exp, rest)
-            }
-            _ => {
-                panic!("error");
-            }
+            let p = Exp::PrefixExp {
+                op: op,
+                right: Box::new(exp),
+            };
+            (p, rest)
+        }
+        _ => {
+            panic!("error");
+        }
+    }
+}
+
+fn get_precedence(token: &Token) -> Precedence {
+    match token {
+        Token::Equal | Token::NotEqual => Precedence::EQUALS,
+        Token::Lt | Token::Gt => Precedence::LESSGREATER,
+        Token::Plus | Token::Minus => Precedence::SUM,
+        Token::Slash | Token::Asterisk => Precedence::PRODUCT,
+        Token::LParen => Precedence::CALL,
+        _ => Precedence::LOWEST,
+    }
+}
+
+fn parse_infix_exp(tokens: &[Token], left: Exp) -> (Exp, &[Token]) {
+    match tokens {
+        [first, rest @ ..] => {
+            let op = convert_op_token(first);
+            let p = get_precedence(first);
+            let (exp, rest) = parse_exp(rest, p);
+            let p = Exp::InfixExp {
+                left: Box::new(left),
+                op: op,
+                right: Box::new(exp),
+            };
+            (p, rest)
+        }
+        _ => {
+            panic!("error");
         }
     }
 }
