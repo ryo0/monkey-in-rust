@@ -1,5 +1,4 @@
-use crate::lexer::Token;
-use std::collections::HashMap;
+use crate::lexer::{start_to_tokenize, Token};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Operator {
@@ -50,15 +49,50 @@ pub enum Precedence {
     LBRACKET,    // []
 }
 
-type prefix_fns_type = Box<dyn Fn(&[Token]) -> (Exp, &[Token])>;
-type infix_fns_type = Box<dyn Fn(&[Token], Precedence, Exp) -> (Exp, &[Token])>;
+fn start_to_parse(tokens: &[Token]) {}
 
-fn start_to_parse() {
-    let mut prefix_parse_fns: HashMap<Token, prefix_fns_type> = HashMap::new();
-    prefix_parse_fns.insert(Token::Bang, Box::new(parse_prefix_exp));
-    prefix_parse_fns.insert(Token::Minus, Box::new(parse_prefix_exp));
-    prefix_parse_fns.insert(Token::LParen, Box::new(parse_grouped_exp));
-    let mut infix_parse_fns: HashMap<Token, infix_fns_type> = HashMap::new();
+fn parse_exp(tokens: &[Token], p: Precedence) -> (Exp, &[Token]) {
+    let (left, rest) = match tokens {
+        [first, rest @ ..] => match first {
+            Token::Int(n) => (Exp::Int(*n), rest),
+            Token::Var(v) => (Exp::Var(v.clone()), rest),
+            Token::True => (Exp::Bool(true), rest),
+            Token::False => (Exp::Bool(false), rest),
+            Token::Bang | Token::Minus => parse_prefix_exp(tokens),
+            Token::LParen => parse_grouped_exp(tokens),
+            // Token::If => parse_if(tokens),
+            _ => panic!("error prefix exp"),
+        },
+        _ => panic!("error prefix exp"),
+    };
+    parse_exp_core(rest, left, p)
+}
+
+fn parse_exp_core(tokens: &[Token], left: Exp, p: Precedence) -> (Exp, &[Token]) {
+    match tokens {
+        [Token::SemiColon, rest @ ..] => (left, rest),
+        [first, _] => {
+            let precedence = get_precedence(first);
+            if p < precedence {
+                let (result, rest) = match first {
+                    Token::Plus
+                    | Token::Minus
+                    | Token::Asterisk
+                    | Token::Slash
+                    | Token::Equal
+                    | Token::NotEqual
+                    | Token::Lt
+                    | Token::Gt => parse_infix_exp(tokens, left),
+                    Token::LParen => parse_grouped_exp(tokens),
+                    _ => (left, tokens),
+                };
+                parse_exp_core(rest, result, precedence)
+            } else {
+                (left, tokens)
+            }
+        }
+        _ => (left, tokens),
+    }
 }
 
 fn parse_grouped_exp(tokens: &[Token]) -> (Exp, &[Token]) {
@@ -131,135 +165,131 @@ fn parse_infix_exp(tokens: &[Token], left: Exp) -> (Exp, &[Token]) {
     }
 }
 
-fn parse_exp(tokens: &[Token], p: Precedence) -> (Exp, &[Token]) {
-    let (exp, rest) = match tokens {
-        [Token::LParen, rest @ ..] => parse_exp(rest),
-        [Token::Int(n), rest @ ..] => (Exp::Int(*n), rest),
-        [Token::True, rest @ ..] => (Exp::Bool(true), rest),
-        [Token::False, rest @ ..] => (Exp::Bool(false), rest),
-        _ => {
-            println!("{:?}", tokens);
-            panic!("error")
-        }
-    };
-    match rest {
-        [Token::RParen, Token::SemiColon, rest @ ..] => (exp, rest),
-        [Token::SemiColon, rest @ ..] => (exp, rest),
-        [Token::RParen, rest @ ..] => (exp, rest),
-        _ => (exp, rest),
-    }
-}
-
-fn parse_let(tokens: &[Token]) -> (Statement, &[Token]) {
-    match tokens {
-        [Token::Let, Token::Var(s), Token::Assign, rest @ ..] => {
-            let (exp, rest) = parse_exp(rest);
-            (
-                Statement::Let {
-                    id: Exp::Var(s.clone()),
-                    value: exp,
-                },
-                rest,
-            )
-        }
-        _ => panic!("let error"),
-    }
-}
-
-fn parse_if(tokens: &[Token]) -> (Exp, &[Token]) {
-    match tokens {
-        [Token::If, rest @ ..] => {
-            let (cond_exp, rest) = parse_exp(rest);
-            match rest {
-                [Token::LBrace, rest @ ..] => {
-                    let (then_exp, rest) = parse_exp(rest);
-                    match rest {
-                        [Token::RBrace, rest @ ..] => match rest {
-                            [Token::Else, Token::LBrace, rest @ ..] => {
-                                let (else_exp, rest) = parse_exp(rest);
-                                let if_exp = Exp::If {
-                                    cond_exp: Box::new(cond_exp),
-                                    then_exp: Box::new(then_exp),
-                                    else_exp: Box::new(Some(else_exp)),
-                                };
-                                match rest {
-                                    [Token::RBrace, rest @ ..] => (if_exp, rest),
-                                    _ => {
-                                        println!("{:?}", rest);
-                                        panic!("error0");
-                                    }
-                                }
-                            }
-                            _ => {
-                                let if_exp = Exp::If {
-                                    cond_exp: Box::new(cond_exp),
-                                    then_exp: Box::new(then_exp),
-                                    else_exp: Box::new(None),
-                                };
-                                match rest {
-                                    [Token::RBrace, rest @ ..] => (if_exp, rest),
-                                    _ => {
-                                        println!("{:?}", rest);
-                                        panic!("error0");
-                                    }
-                                }
-                            }
-                        },
-                        _ => {
-                            println!("{:?}", rest);
-                            panic!("if error1");
-                        }
-                    }
-                }
-                _ => {
-                    println!("{:?}", rest);
-                    panic!("if error2");
-                }
-            }
-        }
-        _ => {
-            println!("{:?}", tokens);
-            panic!("if error3");
-        }
-    }
-}
-
 #[test]
-fn test_parse_let() {
-    let input = "let x = 2;";
+fn test_parse_exp() {
+    let input = "1 + 2;";
     let tokens = start_to_tokenize(input);
-    let result = parse_let(&tokens);
+    let (result, _) = parse_exp(tokens.as_slice(), Precedence::LOWEST);
     assert_eq!(
         result,
-        (
-            Statement::Let {
-                id: Exp::Var("x".to_string()),
-                value: Exp::Int(2)
-            },
-            Vec::new().as_slice(),
-        )
+        Exp::InfixExp {
+            left: Box::new(Exp::Int(1)),
+            op: Operator::Plus,
+            right: Box::new(Exp::Int(2)),
+        }
     )
 }
-#[test]
-fn test_parse_if() {
-    let input = "
-    if (true) {
-        1;
-    } else {
-        2;
-    }
-    ";
-    let tokens = start_to_tokenize(input);
-    let result = parse_if(&tokens);
-    assert_eq!(
-        result,
-        (
-            Exp::If {
-                cond_exp: Box::new(Exp::Bool(true)),
-                then_exp: Box::new(Exp::Int(1)),
-                else_exp: Box::new(Some(Exp::Int(2))),
-            },
-            Vec::new().as_slice(),
-        )
-    )
-}
+
+// fn parse_let(tokens: &[Token]) -> (Statement, &[Token]) {
+//     match tokens {
+//         [Token::Let, Token::Var(s), Token::Assign, rest @ ..] => {
+//             let (exp, rest) = parse_exp(rest);
+//             (
+//                 Statement::Let {
+//                     id: Exp::Var(s.clone()),
+//                     value: exp,
+//                 },
+//                 rest,
+//             )
+//         }
+//         _ => panic!("let error"),
+//     }
+// }
+
+// fn parse_if(tokens: &[Token]) -> (Exp, &[Token]) {
+//     match tokens {
+//         [Token::If, rest @ ..] => {
+//             let (cond_exp, rest) = parse_exp(rest);
+//             match rest {
+//                 [Token::LBrace, rest @ ..] => {
+//                     let (then_exp, rest) = parse_exp(rest);
+//                     match rest {
+//                         [Token::RBrace, rest @ ..] => match rest {
+//                             [Token::Else, Token::LBrace, rest @ ..] => {
+//                                 let (else_exp, rest) = parse_exp(rest);
+//                                 let if_exp = Exp::If {
+//                                     cond_exp: Box::new(cond_exp),
+//                                     then_exp: Box::new(then_exp),
+//                                     else_exp: Box::new(Some(else_exp)),
+//                                 };
+//                                 match rest {
+//                                     [Token::RBrace, rest @ ..] => (if_exp, rest),
+//                                     _ => {
+//                                         println!("{:?}", rest);
+//                                         panic!("error0");
+//                                     }
+//                                 }
+//                             }
+//                             _ => {
+//                                 let if_exp = Exp::If {
+//                                     cond_exp: Box::new(cond_exp),
+//                                     then_exp: Box::new(then_exp),
+//                                     else_exp: Box::new(None),
+//                                 };
+//                                 match rest {
+//                                     [Token::RBrace, rest @ ..] => (if_exp, rest),
+//                                     _ => {
+//                                         println!("{:?}", rest);
+//                                         panic!("error0");
+//                                     }
+//                                 }
+//                             }
+//                         },
+//                         _ => {
+//                             println!("{:?}", rest);
+//                             panic!("if error1");
+//                         }
+//                     }
+//                 }
+//                 _ => {
+//                     println!("{:?}", rest);
+//                     panic!("if error2");
+//                 }
+//             }
+//         }
+//         _ => {
+//             println!("{:?}", tokens);
+//             panic!("if error3");
+//         }
+//     }
+// }
+
+// #[test]
+// fn test_parse_let() {
+//     let input = "let x = 2;";
+//     let tokens = start_to_tokenize(input);
+//     let result = parse_let(&tokens);
+//     assert_eq!(
+//         result,
+//         (
+//             Statement::Let {
+//                 id: Exp::Var("x".to_string()),
+//                 value: Exp::Int(2)
+//             },
+//             Vec::new().as_slice(),
+//         )
+//     )
+// }
+// #[test]
+// fn test_parse_if() {
+//     let input = "
+//     if (true) {
+//         1;
+//     } else {
+//         2;
+//     }
+//     ";
+//     let tokens = start_to_tokenize(input);
+//     let result = parse_if(&tokens);
+//     assert_eq!(
+//         result,
+//         (
+//             Exp::If {
+//                 cond_exp: Box::new(Exp::Bool(true)),
+//                 then_exp: Box::new(Exp::Int(1)),
+//                 else_exp: Box::new(Some(Exp::Int(2))),
+//             },
+//             Vec::new().as_slice(),
+//         )
+//     )
+// }
