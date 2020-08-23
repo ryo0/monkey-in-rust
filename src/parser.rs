@@ -60,7 +60,7 @@ fn parse_exp(tokens: &[Token], p: Precedence) -> (Exp, &[Token]) {
             Token::False => (Exp::Bool(false), rest),
             Token::Bang | Token::Minus => parse_prefix_exp(tokens),
             Token::LParen => parse_grouped_exp(tokens),
-            // Token::If => parse_if(tokens),
+            Token::If => parse_if(tokens),
             _ => panic!("error prefix exp"),
         },
         _ => panic!("error prefix exp"),
@@ -347,5 +347,26 @@ fn test_parse_if() {
             },
             Vec::new().as_slice(),
         )
+    );
+    let input = "
+    1 + if (true) {
+        1;
+    } else {
+        2;
+    }
+    ";
+    let tokens = start_to_tokenize(input);
+    let (exp, _) = parse_exp(&tokens, Precedence::LOWEST);
+    assert_eq!(
+        exp,
+        Exp::InfixExp {
+            left: Box::new(Exp::Int(1)),
+            op: Operator::Plus,
+            right: Box::new(Exp::If {
+                cond_exp: Box::new(Exp::Bool(true)),
+                then_exp: Box::new(Exp::Int(1)),
+                else_exp: Box::new(Some(Exp::Int(2))),
+            })
+        }
     )
 }
