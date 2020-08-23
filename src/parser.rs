@@ -228,15 +228,24 @@ fn test_parse_exp() {
 
 fn parse_let(tokens: &[Token]) -> (Statement, &[Token]) {
     match tokens {
-        [Token::Let, Token::Var(s), Token::Assign, rest @ .., Token::SemiColon] => {
+        [Token::Let, Token::Var(s), Token::Assign, rest @ ..] => {
             let (exp, rest) = parse_exp(rest, Precedence::LOWEST);
-            (
-                Statement::Let {
-                    id: Exp::Var(s.clone()),
-                    value: exp,
-                },
-                rest,
-            )
+            match rest {
+                [Token::SemiColon, rest @ ..] => (
+                    Statement::Let {
+                        id: Exp::Var(s.clone()),
+                        value: exp,
+                    },
+                    rest,
+                ),
+                _ => (
+                    Statement::Let {
+                        id: Exp::Var(s.clone()),
+                        value: exp,
+                    },
+                    rest,
+                ),
+            }
         }
         _ => panic!("let error"),
     }
