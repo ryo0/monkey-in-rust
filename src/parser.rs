@@ -72,9 +72,8 @@ fn parse_exp(tokens: &[Token], p: Precedence) -> (Exp, &[Token]) {
 fn parse_exp_core(tokens: &[Token], left: Exp, p: Precedence) -> (Exp, &[Token]) {
     match tokens {
         [Token::SemiColon, rest @ ..] => (left, rest),
-        [first, _rest @ ..] => {
+        [first, rest @ ..] => {
             let precedence = get_precedence(first);
-            println!("first: {:?}", first);
             if p < precedence {
                 let (result, rest) = match first {
                     Token::Plus
@@ -85,25 +84,26 @@ fn parse_exp_core(tokens: &[Token], left: Exp, p: Precedence) -> (Exp, &[Token])
                     | Token::NotEqual
                     | Token::Lt
                     | Token::Gt => parse_infix_exp(tokens, left),
-                    Token::LParen => parse_grouped_exp(tokens),
+                    Token::LParen => parse_grouped_exp(rest),
                     _ => (left, tokens),
                 };
-                print!("result: {:?}", result);
                 parse_exp_core(rest, result, precedence)
             } else {
                 (left, tokens)
             }
         }
 
-        _ => {
-            println!("else match: {:?}", tokens);
-            (left, tokens)
-        }
+        _ => (left, tokens),
     }
 }
 
 fn parse_grouped_exp(tokens: &[Token]) -> (Exp, &[Token]) {
-    let (exp, rest) = parse_exp(tokens, Precedence::LOWEST);
+    println!("{:?}", tokens);
+    let (exp, rest) = match tokens {
+        [LParen, rest @ ..] => parse_exp(rest, Precedence::LOWEST),
+        _ => panic!("error"),
+    };
+
     match rest {
         [Token::RParen, rest @ ..] => (exp, rest),
         _ => panic!("error: かっこが閉じてない"),
