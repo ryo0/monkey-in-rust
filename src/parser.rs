@@ -377,7 +377,32 @@ fn test_parse_if() {
                 else_stmts: else_stmts,
             })
         }
-    )
+    );
+
+    let input = "
+   if (true) {
+       let x = 2;
+        1;
+    }
+    ";
+    let tokens = start_to_tokenize(input);
+    let (exp, _) = parse_exp(&tokens, Precedence::LOWEST);
+    let then_stmts = vec![
+        Statement::Let {
+            id: Exp::Var("x".to_string()),
+            value: Exp::Int(2),
+        },
+        Statement::ExpStmt { exp: Exp::Int(1) },
+    ];
+    let else_stmts: Vec<Statement> = vec![];
+    assert_eq!(
+        exp,
+        Exp::If {
+            cond_exp: Box::new(Exp::Bool(true)),
+            then_stmts: then_stmts,
+            else_stmts: else_stmts,
+        }
+    );
 }
 #[test]
 fn test_precedence() {
