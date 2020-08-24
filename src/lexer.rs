@@ -72,7 +72,7 @@ pub fn start_to_tokenize(input: &str) -> Vec<Token> {
 
     let mut words = vec![
         String::from("let"),
-        String::from("fn"),
+        String::from("func"),
         String::from("true"),
         String::from("false"),
         String::from("if"),
@@ -205,7 +205,7 @@ fn tokenize_symbol<'a, 'b>(
 #[test]
 fn test_tokenize() {
     let input = "
-  let add = fn(x, y) {
+  let add = func(x, y) {
       let a = xx_ + y_y - z < w * a / b != k == d;
   };
   if (5 < 10) {

@@ -11,6 +11,9 @@ pub enum Operator {
     NotEqual,
 }
 
+type Parameters = Vec<Exp>;
+type Arguments = Vec<Exp>;
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Exp {
     Int(i32),
@@ -29,6 +32,14 @@ pub enum Exp {
         left: Box<Exp>,
         op: Operator,
         right: Box<Exp>,
+    },
+    Func {
+        params: Parameters,
+        body: Vec<Statement>,
+    },
+    FuncCall {
+        funcName: Box<Exp>,
+        args: Arguments,
     },
 }
 
@@ -62,6 +73,7 @@ pub fn parse_exp(tokens: &[Token], p: Precedence) -> (Exp, &[Token]) {
             Token::Bang | Token::Minus => parse_prefix_exp(tokens),
             Token::LParen => parse_grouped_exp(tokens),
             Token::If => parse_if(tokens),
+            Token::Fn => parse_func(tokens),
             _ => panic!("error prefix exp"),
         },
         _ => panic!("error prefix exp"),
@@ -225,6 +237,66 @@ fn parse_block_statements(tokens: &[Token], mut acm: Vec<Statement>) -> (Vec<Sta
             let (stmt, rest) = parse_statement(tokens);
             acm.push(stmt);
             parse_block_statements(rest, acm)
+        }
+    }
+}
+
+fn parse_func(tokens: &[Token]) -> (Exp, &[Token]) {
+    match tokens {
+        [Token::Fn, rest @ ..] => {
+            let empty_vec: Vec<Exp> = vec![];
+            let (params, rest) = parse_params(rest, empty_vec);
+            let empty_vec: Vec<Statement> = vec![];
+            let (stmts, rest) = parse_block_statements(rest, empty_vec);
+            (
+                Exp::Func {
+                    params: params,
+                    body: stmts,
+                },
+                rest,
+            )
+        }
+        _ => {
+            println!("{:?}", tokens);
+            panic!("error");
+        }
+    }
+}
+
+fn parse_params(tokens: &[Token], mut acm: Vec<Exp>) -> (Parameters, &[Token]) {
+    match tokens {
+        [Token::RParen, rest @ ..] => (acm, rest),
+        [Token::LParen, rest @ ..] => {
+            let (exp, rest) = parse_exp(rest, Precedence::LOWEST);
+            acm.push(exp);
+            parse_params(rest, acm)
+        }
+        [Token::Comma, rest @ ..] => {
+            let (exp, rest) = parse_exp(rest, Precedence::LOWEST);
+            acm.push(exp);
+            parse_params(rest, acm)
+        }
+        _ => {
+            panic!("error");
+        }
+    }
+}
+
+fn parse_args(tokens: &[Token], mut acm: Vec<Exp>) -> (Arguments, &[Token]) {
+    match tokens {
+        [Token::RParen, rest @ ..] => (acm, rest),
+        [Token::LParen, rest @ ..] => {
+            let (exp, rest) = parse_exp(rest, Precedence::LOWEST);
+            acm.push(exp);
+            parse_args(rest, acm)
+        }
+        [Token::Comma, rest @ ..] => {
+            let (exp, rest) = parse_exp(rest, Precedence::LOWEST);
+            acm.push(exp);
+            parse_args(rest, acm)
+        }
+        _ => {
+            panic!("error");
         }
     }
 }
@@ -408,4 +480,25 @@ fn test_parse_if() {
 fn test_precedence() {
     assert_eq!(Precedence::CALL > Precedence::SUM, true);
     assert_eq!(Precedence::SUM > Precedence::LOWEST, true);
+}
+
+#[test]
+fn test_parse_stmt() {
+    let input = "
+    func(x, y) {
+        let x = 2;
+    }
+    ";
+    let tokens = start_to_tokenize(input);
+    let (func, _) = parse_func(tokens.as_slice());
+    assert_eq!(
+        func,
+        Exp::Func {
+            params: vec![Exp::Var("x".to_string()), Exp::Var("y".to_string())],
+            body: vec![Statement::Let {
+                id: Exp::Var("x".to_string()),
+                value: Exp::Int(2),
+            }],
+        }
+    );
 }
