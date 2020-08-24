@@ -65,17 +65,16 @@ pub fn parse_exp(tokens: &[Token], p: Precedence) -> (Exp, &[Token]) {
         },
         _ => panic!("error prefix exp"),
     };
-    println!("rest: {:?}", rest);
     parse_exp_core(rest, left, p)
 }
 
 fn parse_exp_core(tokens: &[Token], left: Exp, p: Precedence) -> (Exp, &[Token]) {
     match tokens {
         [Token::SemiColon, rest @ ..] => (left, rest),
-        [first, rest @ ..] => {
-            let precedence = get_precedence(first);
+        [op, _rest @ ..] => {
+            let precedence = get_precedence(op);
             if p < precedence {
-                let (result, rest) = match first {
+                let (result, rest) = match op {
                     Token::Plus
                     | Token::Minus
                     | Token::Asterisk
@@ -84,10 +83,11 @@ fn parse_exp_core(tokens: &[Token], left: Exp, p: Precedence) -> (Exp, &[Token])
                     | Token::NotEqual
                     | Token::Lt
                     | Token::Gt => parse_infix_exp(tokens, left),
-                    Token::LParen => parse_grouped_exp(rest),
-                    _ => (left, tokens),
+                    _ => {
+                        return (left, tokens);
+                    }
                 };
-                parse_exp_core(rest, result, precedence)
+                parse_exp_core(rest, result, p)
             } else {
                 (left, tokens)
             }
@@ -98,15 +98,17 @@ fn parse_exp_core(tokens: &[Token], left: Exp, p: Precedence) -> (Exp, &[Token])
 }
 
 fn parse_grouped_exp(tokens: &[Token]) -> (Exp, &[Token]) {
-    println!("{:?}", tokens);
     let (exp, rest) = match tokens {
-        [LParen, rest @ ..] => parse_exp(rest, Precedence::LOWEST),
+        [Token::LParen, rest @ ..] => parse_exp(rest, Precedence::LOWEST),
         _ => panic!("error"),
     };
 
     match rest {
         [Token::RParen, rest @ ..] => (exp, rest),
-        _ => panic!("error: かっこが閉じてない"),
+        _ => {
+            println!("{:?}", rest);
+            panic!("error: かっこが閉じてない ");
+        }
     }
 }
 
@@ -159,11 +161,11 @@ fn parse_infix_exp(tokens: &[Token], left: Exp) -> (Exp, &[Token]) {
         [first, rest @ ..] => {
             let op = convert_op_token(first);
             let p = get_precedence(first);
-            let (exp, rest) = parse_exp(rest, p);
+            let (right, rest) = parse_exp(rest, p);
             let p = Exp::InfixExp {
                 left: Box::new(left),
                 op: op,
-                right: Box::new(exp),
+                right: Box::new(right),
             };
             (p, rest)
         }
@@ -221,6 +223,22 @@ fn test_parse_exp() {
                     op: Operator::Minus,
                     right: Box::new(Exp::Int(3))
                 }),
+            }),
+        }
+    );
+
+    let input = "(5 - (4 + 2));";
+    let tokens = start_to_tokenize(input);
+    let (result, _) = parse_exp(tokens.as_slice(), Precedence::LOWEST);
+    assert_eq!(
+        result,
+        Exp::InfixExp {
+            left: Box::new(Exp::Int(5)),
+            op: Operator::Minus,
+            right: Box::new(Exp::InfixExp {
+                left: Box::new(Exp::Int(4)),
+                op: Operator::Plus,
+                right: Box::new(Exp::Int(2)),
             }),
         }
     );
@@ -369,4 +387,9 @@ fn test_parse_if() {
             })
         }
     )
+}
+#[test]
+fn test_precedence() {
+    assert_eq!(Precedence::CALL > Precedence::SUM, true);
+    assert_eq!(Precedence::SUM > Precedence::LOWEST, true);
 }
