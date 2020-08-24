@@ -263,6 +263,26 @@ fn parse_func(tokens: &[Token]) -> (Exp, &[Token]) {
     }
 }
 
+fn parse_func_call(tokens: &[Token]) -> (Exp, &[Token]) {
+    match tokens {
+        [Token::Var(v), rest @ ..] => {
+            let empty_vec: Vec<Exp> = vec![];
+            let (args, rest) = parse_args(rest, empty_vec);
+            (
+                Exp::FuncCall {
+                    funcName: Box::new(Exp::Var(v.clone())),
+                    args: args,
+                },
+                rest,
+            )
+        }
+        _ => {
+            println!("{:?}", tokens);
+            panic!("error");
+        }
+    }
+}
+
 fn parse_params(tokens: &[Token], mut acm: Vec<Exp>) -> (Parameters, &[Token]) {
     match tokens {
         [Token::RParen, rest @ ..] => (acm, rest),
@@ -499,6 +519,29 @@ fn test_parse_stmt() {
                 id: Exp::Var("x".to_string()),
                 value: Exp::Int(2),
             }],
+        }
+    );
+}
+
+#[test]
+fn test_parse_func_call() {
+    let input = "
+    add(x+1, y);
+    ";
+    let tokens = start_to_tokenize(input);
+    let (func_call, _) = parse_func_call(tokens.as_slice());
+    assert_eq!(
+        func_call,
+        Exp::FuncCall {
+            funcName: Box::new(Exp::Var("add".to_string())),
+            args: vec![
+                Exp::InfixExp {
+                    left: Box::new(Exp::Var("x".to_string())),
+                    op: Operator::Plus,
+                    right: Box::new(Exp::Int(1))
+                },
+                Exp::Var("y".to_string())
+            ]
         }
     );
 }
