@@ -18,8 +18,8 @@ pub enum Exp {
     Bool(bool),
     If {
         cond_exp: Box<Exp>,
-        then_exp: Box<Exp>,
-        else_exp: Box<Option<Exp>>,
+        then_stmts: Vec<Statement>,
+        else_stmts: Vec<Statement>,
     },
     PrefixExp {
         op: Operator,
@@ -35,6 +35,7 @@ pub enum Exp {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Statement {
     Let { id: Exp, value: Exp },
+    ExpStmt { exp: Exp },
 }
 
 #[derive(Debug, PartialEq, PartialOrd)]
@@ -175,6 +176,97 @@ fn parse_infix_exp(tokens: &[Token], left: Exp) -> (Exp, &[Token]) {
     }
 }
 
+fn parse_let(tokens: &[Token]) -> (Statement, &[Token]) {
+    match tokens {
+        [Token::Let, Token::Var(s), Token::Assign, rest @ ..] => {
+            let (exp, rest) = parse_exp(rest, Precedence::LOWEST);
+            match rest {
+                [Token::SemiColon, rest @ ..] => (
+                    Statement::Let {
+                        id: Exp::Var(s.clone()),
+                        value: exp,
+                    },
+                    rest,
+                ),
+                _ => (
+                    Statement::Let {
+                        id: Exp::Var(s.clone()),
+                        value: exp,
+                    },
+                    rest,
+                ),
+            }
+        }
+        _ => panic!("let error"),
+    }
+}
+
+fn parse_exp_statement(tokens: &[Token]) -> (Statement, &[Token]) {
+    let (exp, rest) = parse_exp(tokens, Precedence::LOWEST);
+    (Statement::ExpStmt { exp: exp }, rest)
+}
+
+fn parse_statement(tokens: &[Token]) -> (Statement, &[Token]) {
+    match tokens {
+        [Token::Let, _rest @ ..] => parse_let(tokens),
+        _ => parse_exp_statement(tokens),
+    }
+}
+
+fn parse_block_statements(tokens: &[Token], mut acm: Vec<Statement>) -> (Vec<Statement>, &[Token]) {
+    match tokens {
+        [Token::RBrace, rest @ ..] => (acm, rest),
+        [Token::LBrace, rest @ ..] => {
+            let (stmt, rest) = parse_statement(rest);
+            acm.push(stmt);
+            parse_block_statements(rest, acm)
+        }
+        _ => {
+            let (stmt, rest) = parse_statement(tokens);
+            acm.push(stmt);
+            parse_block_statements(rest, acm)
+        }
+    }
+}
+
+fn parse_if(tokens: &[Token]) -> (Exp, &[Token]) {
+    match tokens {
+        [Token::If, rest @ ..] => {
+            let (cond_exp, rest) = parse_exp(rest, Precedence::LOWEST);
+            let emp_vec: Vec<Statement> = Vec::new();
+            let (then_stmts, rest) = parse_block_statements(rest, emp_vec);
+            match rest {
+                [Token::Else, rest @ ..] => {
+                    let emp_vec: Vec<Statement> = Vec::new();
+                    let (else_stmts, rest) = parse_block_statements(rest, emp_vec);
+                    (
+                        Exp::If {
+                            cond_exp: Box::new(cond_exp),
+                            then_stmts: then_stmts,
+                            else_stmts: else_stmts,
+                        },
+                        rest,
+                    )
+                }
+                _ => {
+                    let emp_vec: Vec<Statement> = Vec::new();
+                    (
+                        Exp::If {
+                            cond_exp: Box::new(cond_exp),
+                            then_stmts: then_stmts,
+                            else_stmts: emp_vec,
+                        },
+                        rest,
+                    )
+                }
+            }
+        }
+        _ => {
+            panic!("if error");
+        }
+    }
+}
+
 #[test]
 fn test_parse_exp() {
     let input = "1 + 2;";
@@ -244,89 +336,6 @@ fn test_parse_exp() {
     );
 }
 
-fn parse_let(tokens: &[Token]) -> (Statement, &[Token]) {
-    match tokens {
-        [Token::Let, Token::Var(s), Token::Assign, rest @ ..] => {
-            let (exp, rest) = parse_exp(rest, Precedence::LOWEST);
-            match rest {
-                [Token::SemiColon, rest @ ..] => (
-                    Statement::Let {
-                        id: Exp::Var(s.clone()),
-                        value: exp,
-                    },
-                    rest,
-                ),
-                _ => (
-                    Statement::Let {
-                        id: Exp::Var(s.clone()),
-                        value: exp,
-                    },
-                    rest,
-                ),
-            }
-        }
-        _ => panic!("let error"),
-    }
-}
-
-fn parse_if(tokens: &[Token]) -> (Exp, &[Token]) {
-    match tokens {
-        [Token::If, rest @ ..] => {
-            let (cond_exp, rest) = parse_exp(rest, Precedence::LOWEST);
-            match rest {
-                [Token::LBrace, rest @ ..] => {
-                    let (then_exp, rest) = parse_exp(rest, Precedence::LOWEST);
-                    match rest {
-                        [Token::RBrace, rest @ ..] => match rest {
-                            [Token::Else, Token::LBrace, rest @ ..] => {
-                                let (else_exp, rest) = parse_exp(rest, Precedence::LOWEST);
-                                let if_exp = Exp::If {
-                                    cond_exp: Box::new(cond_exp),
-                                    then_exp: Box::new(then_exp),
-                                    else_exp: Box::new(Some(else_exp)),
-                                };
-                                match rest {
-                                    [Token::RBrace, rest @ ..] => (if_exp, rest),
-                                    _ => {
-                                        println!("{:?}", rest);
-                                        panic!("error0");
-                                    }
-                                }
-                            }
-                            _ => {
-                                let if_exp = Exp::If {
-                                    cond_exp: Box::new(cond_exp),
-                                    then_exp: Box::new(then_exp),
-                                    else_exp: Box::new(None),
-                                };
-                                match rest {
-                                    [Token::RBrace, rest @ ..] => (if_exp, rest),
-                                    _ => {
-                                        println!("{:?}", rest);
-                                        panic!("error0");
-                                    }
-                                }
-                            }
-                        },
-                        _ => {
-                            println!("{:?}", rest);
-                            panic!("if error1");
-                        }
-                    }
-                }
-                _ => {
-                    println!("{:?}", rest);
-                    panic!("if error2");
-                }
-            }
-        }
-        _ => {
-            println!("{:?}", tokens);
-            panic!("if error3");
-        }
-    }
-}
-
 #[test]
 fn test_parse_let() {
     let input = "let x = 2;";
@@ -347,26 +356,6 @@ fn test_parse_let() {
 #[test]
 fn test_parse_if() {
     let input = "
-    if (true) {
-        1;
-    } else {
-        2;
-    }
-    ";
-    let tokens = start_to_tokenize(input);
-    let result = parse_if(&tokens);
-    assert_eq!(
-        result,
-        (
-            Exp::If {
-                cond_exp: Box::new(Exp::Bool(true)),
-                then_exp: Box::new(Exp::Int(1)),
-                else_exp: Box::new(Some(Exp::Int(2))),
-            },
-            Vec::new().as_slice(),
-        )
-    );
-    let input = "
     1 + if (true) {
         1;
     } else {
@@ -375,6 +364,8 @@ fn test_parse_if() {
     ";
     let tokens = start_to_tokenize(input);
     let (exp, _) = parse_exp(&tokens, Precedence::LOWEST);
+    let then_stmts = vec![Statement::ExpStmt { exp: Exp::Int(1) }];
+    let else_stmts = vec![Statement::ExpStmt { exp: Exp::Int(2) }];
     assert_eq!(
         exp,
         Exp::InfixExp {
@@ -382,8 +373,8 @@ fn test_parse_if() {
             op: Operator::Plus,
             right: Box::new(Exp::If {
                 cond_exp: Box::new(Exp::Bool(true)),
-                then_exp: Box::new(Exp::Int(1)),
-                else_exp: Box::new(Some(Exp::Int(2))),
+                then_stmts: then_stmts,
+                else_stmts: else_stmts,
             })
         }
     )

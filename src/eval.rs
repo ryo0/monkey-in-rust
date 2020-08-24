@@ -1,4 +1,4 @@
-use crate::lexer::{start_to_tokenize, Token};
+use crate::lexer::start_to_tokenize;
 use crate::parser::{parse_exp, Exp, Operator, Precedence};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
