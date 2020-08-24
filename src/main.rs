@@ -1,5 +1,7 @@
+mod eval;
 mod lexer;
 mod parser;
+
 fn main() {
     let input = "
   let add = fn(x, y) {

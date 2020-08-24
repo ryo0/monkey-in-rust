@@ -51,7 +51,7 @@ pub enum Precedence {
 
 fn start_to_parse(tokens: &[Token]) {}
 
-fn parse_exp(tokens: &[Token], p: Precedence) -> (Exp, &[Token]) {
+pub fn parse_exp(tokens: &[Token], p: Precedence) -> (Exp, &[Token]) {
     let (left, rest) = match tokens {
         [first, rest @ ..] => match first {
             Token::Int(n) => (Exp::Int(*n), rest),
