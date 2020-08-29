@@ -64,7 +64,20 @@ pub enum Precedence {
     LBRACKET,    // []
 }
 
-fn start_to_parse(tokens: &[Token]) {}
+fn start_to_parse(tokens: &[Token]) -> Program {
+    let mut empty_vec: Vec<Statement> = vec![];
+    parse_program(tokens, &mut empty_vec)
+}
+
+fn parse_program(tokens: &[Token], acm: &mut Vec<Statement>) -> Vec<Statement> {
+    if tokens.len() == 0 {
+        acm.clone()
+    } else {
+        let (s, rest) = parse_statement(tokens);
+        acm.push(s);
+        parse_program(rest, acm)
+    }
+}
 
 pub fn parse_exp(tokens: &[Token], p: Precedence) -> (Exp, &[Token]) {
     let (left, rest) = match tokens {
@@ -376,6 +389,39 @@ fn parse_return(tokens: &[Token]) -> (Statement, &[Token]) {
     }
 }
 
+#[test]
+fn test_parse_program() {
+    let input = "
+    if (true) {
+        1;
+    } else {
+        2;
+    }
+    func(x, y) {
+        let x = 2;
+    }";
+    let tokens = start_to_tokenize(input);
+    let result = start_to_parse(tokens.as_slice());
+    let then_stmts = vec![Statement::ExpStmt { exp: Exp::Int(1) }];
+    let else_stmts = vec![Statement::ExpStmt { exp: Exp::Int(2) }];
+    let if_exp = Exp::If {
+        cond_exp: Box::new(Exp::Bool(true)),
+        then_stmts: then_stmts,
+        else_stmts: else_stmts,
+    };
+    let func = Exp::Func {
+        params: vec![Exp::Var("x".to_string()), Exp::Var("y".to_string())],
+        body: vec![Statement::Let {
+            id: Exp::Var("x".to_string()),
+            value: Exp::Int(2),
+        }],
+    };
+    let parsed = vec![
+        Statement::ExpStmt { exp: if_exp },
+        Statement::ExpStmt { exp: func },
+    ];
+    assert_eq!(result, parsed);
+}
 #[test]
 fn test_parse_return() {
     let input = "return 1 + 2;";
