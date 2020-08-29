@@ -189,4 +189,14 @@ fn test_eval_let() {
     println!("{:?}", p);
     let result = eval_program(p);
     assert_eq!(result, Value::Int { val: -10 });
+
+    let input = "
+    let x = 10;
+    let x = 20;
+    x - 10";
+    let tokens = start_to_tokenize(input);
+    let p = start_to_parse(tokens.as_slice());
+    println!("{:?}", p);
+    let result = eval_program(p);
+    assert_eq!(result, Value::Int { val: 10 });
 }
