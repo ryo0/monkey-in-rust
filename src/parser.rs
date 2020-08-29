@@ -14,7 +14,7 @@ pub enum Operator {
 type Parameters = Vec<Exp>;
 type Arguments = Vec<Exp>;
 
-type Program = Vec<Statement>;
+pub type Program = Vec<Statement>;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Exp {
@@ -64,7 +64,7 @@ pub enum Precedence {
     LBRACKET,    // []
 }
 
-fn start_to_parse(tokens: &[Token]) -> Program {
+pub fn start_to_parse(tokens: &[Token]) -> Program {
     let mut empty_vec: Vec<Statement> = vec![];
     parse_program(tokens, &mut empty_vec)
 }
