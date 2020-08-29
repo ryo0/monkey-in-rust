@@ -14,6 +14,8 @@ pub enum Operator {
 type Parameters = Vec<Exp>;
 type Arguments = Vec<Exp>;
 
+type Program = Vec<Statement>;
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Exp {
     Int(i32),
@@ -47,6 +49,7 @@ pub enum Exp {
 pub enum Statement {
     Let { id: Exp, value: Exp },
     ExpStmt { exp: Exp },
+    Return { exp: Exp },
 }
 
 #[derive(Debug, PartialEq, PartialOrd)]
@@ -221,6 +224,7 @@ fn parse_exp_statement(tokens: &[Token]) -> (Statement, &[Token]) {
 fn parse_statement(tokens: &[Token]) -> (Statement, &[Token]) {
     match tokens {
         [Token::Let, _rest @ ..] => parse_let(tokens),
+        [Token::Return, _rest @ ..] => parse_return(tokens),
         _ => parse_exp_statement(tokens),
     }
 }
@@ -359,6 +363,35 @@ fn parse_if(tokens: &[Token]) -> (Exp, &[Token]) {
     }
 }
 
+fn parse_return(tokens: &[Token]) -> (Statement, &[Token]) {
+    match tokens {
+        [Token::Return, rest @ ..] => {
+            let (exp, rest) = parse_exp(rest, Precedence::LOWEST);
+            (Statement::Return { exp: exp }, rest)
+        }
+
+        _ => {
+            panic!("return error");
+        }
+    }
+}
+
+#[test]
+fn test_parse_return() {
+    let input = "return 1 + 2;";
+    let tokens = start_to_tokenize(input);
+    let (result, _) = parse_statement(tokens.as_slice());
+    assert_eq!(
+        result,
+        Statement::Return {
+            exp: Exp::InfixExp {
+                left: Box::new(Exp::Int(1)),
+                op: Operator::Plus,
+                right: Box::new(Exp::Int(2))
+            }
+        }
+    )
+}
 #[test]
 fn test_parse_exp() {
     let input = "1 + 2;";
