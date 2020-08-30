@@ -13,13 +13,13 @@ enum Value {
     Int { val: i32 },
 }
 
-fn get_value(env: Env, key: String) -> Value {
+fn get_value(env: &Env, key: String) -> Value {
     println!("{:?}", env);
     let v = env.env.get(&key);
     match v {
         Some(v) => v.clone(),
-        None => match env.next {
-            Some(env_next) => get_value(*env_next, key),
+        None => match env.next.clone() {
+            Some(env_next) => get_value(&env_next, key),
             None => {
                 panic!("error");
             }
@@ -93,9 +93,26 @@ fn eval_exp(exp: Exp, env: &Env) -> Value {
             }
         }
         Exp::Int(n) => Value::Int { val: n },
-        Exp::Var(n) => get_value(env.clone(), n),
+        Exp::Var(n) => get_value(&env, n),
         _ => panic!("error 未対応"),
     }
+}
+#[test]
+fn test_get_eval() {
+    let mut e1: HashMap<String, Value> = HashMap::new();
+    let mut e2: HashMap<String, Value> = HashMap::new();
+    e1.insert("x".to_string(), Value::Int { val: 1 });
+    e2.insert("y".to_string(), Value::Int { val: 3 });
+    let next_env = Env {
+        env: e2,
+        next: None,
+    };
+    let env: Env = Env {
+        env: e1,
+        next: Some(Box::new(next_env)),
+    };
+    assert_eq!(get_value(&env, "x".to_string()), Value::Int { val: 1 });
+    assert_eq!(get_value(&env, "y".to_string()), Value::Int { val: 3 });
 }
 
 #[test]
