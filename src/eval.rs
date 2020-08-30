@@ -149,74 +149,74 @@ fn test_get_eval() {
 
 #[test]
 fn test_eval_exp() {
-    let emp: Env = Env {
+    let mut emp: Env = Env {
         env: HashMap::new(),
         next: None,
     };
     let input = "-1 - 2 * -3;";
     let tokens = start_to_tokenize(input);
     let (result, _) = parse_exp(tokens.as_slice(), Precedence::LOWEST);
-    let result = eval_exp(result, &emp);
+    let result = eval_exp(result, &mut emp);
     assert_eq!(result, Value::Int { val: 5 });
 
-    let emp: Env = Env {
+    let mut emp: Env = Env {
         env: HashMap::new(),
         next: None,
     };
     let input = "(5 - (4 + 2));";
     let tokens = start_to_tokenize(input);
     let (result, _) = parse_exp(tokens.as_slice(), Precedence::LOWEST);
-    let result = eval_exp(result, &emp);
+    let result = eval_exp(result, &mut emp);
     assert_eq!(result, Value::Int { val: -1 });
 
-    let emp: Env = Env {
+    let mut emp: Env = Env {
         env: HashMap::new(),
         next: None,
     };
     let input = "(5 - (4 + 2) + 1);";
     let tokens = start_to_tokenize(input);
     let (result, _) = parse_exp(tokens.as_slice(), Precedence::LOWEST);
-    let result = eval_exp(result, &emp);
+    let result = eval_exp(result, &mut emp);
     assert_eq!(result, Value::Int { val: 0 });
 
-    let emp: Env = Env {
+    let mut emp: Env = Env {
         env: HashMap::new(),
         next: None,
     };
     let input = "(5 - (4 + 2) * (2 - 1) * 7 + 2);";
     let tokens = start_to_tokenize(input);
     let (result, _) = parse_exp(tokens.as_slice(), Precedence::LOWEST);
-    let result = eval_exp(result, &emp);
+    let result = eval_exp(result, &mut emp);
     assert_eq!(result, Value::Int { val: -35 });
 
-    let emp: Env = Env {
+    let mut emp: Env = Env {
         env: HashMap::new(),
         next: None,
     };
     let input = "2*(3+4)-5+4;";
     let tokens = start_to_tokenize(input);
     let (result, _) = parse_exp(tokens.as_slice(), Precedence::LOWEST);
-    let result = eval_exp(result, &emp);
+    let result = eval_exp(result, &mut emp);
     assert_eq!(result, Value::Int { val: 13 });
 
-    let emp: Env = Env {
+    let mut emp: Env = Env {
         env: HashMap::new(),
         next: None,
     };
     let input = "2*(3+(4*2+12*35)-54)*(2+4);";
     let tokens = start_to_tokenize(input);
     let (result, _) = parse_exp(tokens.as_slice(), Precedence::LOWEST);
-    let result = eval_exp(result, &emp);
+    let result = eval_exp(result, &mut emp);
     assert_eq!(result, Value::Int { val: 4524 });
 
-    let emp: Env = Env {
+    let mut emp: Env = Env {
         env: HashMap::new(),
         next: None,
     };
     let input = "6*(53 - 4) * (4 + 5 *( 5 - (4 + 2) * (2 - 1) * 7 + 2) * 2 + 5 * 7);";
     let tokens = start_to_tokenize(input);
     let (result, _) = parse_exp(tokens.as_slice(), Precedence::LOWEST);
-    let result = eval_exp(result, &emp);
+    let result = eval_exp(result, &mut emp);
     assert_eq!(result, Value::Int { val: -91434 });
 }
 
