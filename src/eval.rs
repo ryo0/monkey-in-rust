@@ -27,8 +27,6 @@ enum Value {
 }
 
 fn get_value(env: &Env, key: String) -> Value {
-    // println!("env is {:?}", env);
-    println!("\n-----------\n");
     let v = env.env.get(&key);
     match v {
         Some(v) => v.clone(),
@@ -424,9 +422,9 @@ fn test_func_call() {
 
 #[test]
 fn test_rec_func_call() {
-    // 無限に大きい環境を作ってしまっていると見られる。
+    // 環境をprintln!しようとすると、循環参照のため無限にループが回ってしまう模様
     let input = "
-    let f = func(x, acm) {
+    let rec f = func(x, acm) {
         if(x == 0) {
             return acm;
         } else {
