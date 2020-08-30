@@ -295,6 +295,37 @@ fn test_if_exp() {
 }
 
 #[test]
+fn test_func() {
+    let input = "
+    func(x) {
+        return 3 + 1;
+    };
+    ";
+    let tokens = start_to_tokenize(input);
+    let p = start_to_parse(tokens.as_slice());
+    let mut env = Env {
+        env: HashMap::new(),
+        next: None,
+    };
+    let result = eval_program(p, &mut env);
+    let s = Exp::Var("x".to_string());
+    assert_eq!(
+        result,
+        Value::Func {
+            params: vec![s],
+            body: vec![Statement::Return {
+                exp: Exp::InfixExp {
+                    left: Box::new(Exp::Int(3)),
+                    op: Operator::Plus,
+                    right: Box::new(Exp::Int(1)),
+                }
+            }],
+            env: env,
+        }
+    );
+}
+
+#[test]
 fn test_func_call() {
     let input = "
     let f = func(x) {
