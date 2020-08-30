@@ -181,6 +181,7 @@ fn eval_exp(exp: Exp, env: &mut Rc<RefCell<Env>>) -> Value {
                     eval_program(body, &mut new_env)
                 }
                 _ => {
+                    println!("evaled_func{:?}", evaled_func);
                     panic!("error");
                 }
             }
@@ -441,6 +442,58 @@ fn test_rec_func_call() {
     }));
     let result = eval_program(p, &mut env);
     assert_eq!(result, Value::Int { val: 5 });
+}
+#[test]
+fn test_rec_closure_func_call() {
+    // 環境をprintln!しようとすると、循環参照のため無限にループが回ってしまう模様
+    let input = "
+    let closure = func() {
+        let y = 100;
+        let f = func(x, acm) {
+            if(x == 0) {
+                return acm + y;
+            } else {
+                return f(x-1, acm+1);
+            }
+        };
+        return f;
+    };
+    let y = 1;
+    let g = closure();
+    g(5, 0);
+    ";
+    let tokens = start_to_tokenize(input);
+    let p = start_to_parse(tokens.as_slice());
+    let mut env = Rc::new(RefCell::new(Env {
+        env: HashMap::new(),
+        next: None,
+    }));
+    let result = eval_program(p, &mut env);
+    assert_eq!(result, Value::Int { val: 105 });
+
+    let input = "
+        let closure = func() {
+            let y = 100;
+            let f = func(x, acm) {
+                if(x == 0) {
+                    return acm + y;
+                } else {
+                    return f(x-1, acm+1);
+                }
+            };
+            return f;
+        };
+        let y = 1;
+        let g = closure()(5, 0);
+        ";
+    let tokens = start_to_tokenize(input);
+    let p = start_to_parse(tokens.as_slice());
+    let mut env = Rc::new(RefCell::new(Env {
+        env: HashMap::new(),
+        next: None,
+    }));
+    let result = eval_program(p, &mut env);
+    assert_eq!(result, Value::Int { val: 105 });
 }
 
 #[test]
