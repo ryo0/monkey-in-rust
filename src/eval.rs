@@ -10,9 +10,18 @@ struct Env {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 enum Value {
-    Int { val: i32 },
-    Bool { val: bool },
+    Int {
+        val: i32,
+    },
+    Bool {
+        val: bool,
+    },
     Null,
+    Func {
+        param: Vec<Exp>,
+        body: Vec<Statement>,
+        env: Env,
+    },
 }
 
 fn get_value(env: &Env, key: String) -> Value {
@@ -39,6 +48,10 @@ fn eval_program(program: Program, env: &mut Env) -> Value {
             Statement::ExpStmt { exp } => {
                 let evaled_value = eval_exp(exp, env);
                 value = evaled_value;
+            }
+            Statement::Return { exp } => {
+                let evaled_value = eval_exp(exp, env);
+                return evaled_value;
             }
             _ => {
                 panic!("未対応");
@@ -242,6 +255,27 @@ fn test_if_exp() {
     };
     let result = eval_program(p, &mut env);
     assert_eq!(result, Value::Int { val: 11 });
+}
+
+#[test]
+fn test_return_exp() {
+    let input = "
+    if(true) {
+        let x = 2;
+        return true;
+        3;
+    } else {
+        return false;
+    };
+    ";
+    let tokens = start_to_tokenize(input);
+    let p = start_to_parse(tokens.as_slice());
+    let mut env = Env {
+        env: HashMap::new(),
+        next: None,
+    };
+    let result = eval_program(p, &mut env);
+    assert_eq!(result, Value::Bool { val: true });
 }
 
 #[test]
