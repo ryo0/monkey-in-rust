@@ -89,12 +89,13 @@ fn parse_program(tokens: &[Token], acm: &mut Vec<Statement>) -> Vec<Statement> {
 
 pub fn parse_exp(tokens: &[Token], p: Precedence) -> (Exp, &[Token]) {
     let (left, rest) = match tokens {
+        [Token::Var(_), Token::LParen, _rest @ ..] => parse_func_call(tokens),
         [first, rest @ ..] => match first {
             Token::Int(n) => (Exp::Int(*n), rest),
             Token::Var(v) => (Exp::Var(v.clone()), rest),
             Token::True => (Exp::Bool(true), rest),
             Token::False => (Exp::Bool(false), rest),
-            Token::Bang | Token::Minus => parse_prefix_exp(tokens),
+            Token::Bang | Token::Minus | Token::LParen => parse_prefix_exp(tokens),
             Token::If => parse_if(tokens),
             Token::Fn => parse_func(tokens),
             _ => {
@@ -175,7 +176,7 @@ fn parse_prefix_exp(tokens: &[Token]) -> (Exp, &[Token]) {
         [first, rest @ ..] => {
             let op = convert_op_token(first);
             match op {
-                Operator::Paren => parse_grouped_exp(rest),
+                Operator::Paren => parse_grouped_exp(tokens),
                 _ => {
                     let (exp, rest) = parse_exp(rest, Precedence::PREFIX);
                     let p = Exp::PrefixExp {
