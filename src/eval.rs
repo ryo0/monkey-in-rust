@@ -27,7 +27,7 @@ enum Value {
 }
 
 fn get_value(env: &Env, key: String) -> Value {
-    println!("{:?}", env);
+    println!("env is {:?}", env);
     let v = env.env.get(&key);
     match v {
         Some(v) => v.clone(),
@@ -193,7 +193,9 @@ fn eval_exp(exp: Exp, env: &mut Env) -> Value {
                 body: body.clone(),
                 env: my_env.clone(),
             };
+            println!("my_env1, {:?}", my_env);
             my_env.borrow_mut().env.insert(name, myself);
+            println!("my_env2, {:?}", my_env);
             Value::Func {
                 params: params,
                 body: body,
@@ -428,10 +430,10 @@ fn test_rec_func_call() {
         if(x == 0) {
             return acm;
         } else {
-            return f(x-1, acm+1);
+            return 1;
         }
     };
-    f(2);
+    f(0, 0);
     ";
     let tokens = start_to_tokenize(input);
     let p = start_to_parse(tokens.as_slice());

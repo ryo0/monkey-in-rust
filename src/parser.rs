@@ -11,7 +11,7 @@ pub enum Operator {
     NotEqual,
     Less,
     Greater,
-    FunCall,
+    Paren,
 }
 
 type Parameters = Vec<Exp>;
@@ -95,10 +95,12 @@ pub fn parse_exp(tokens: &[Token], p: Precedence) -> (Exp, &[Token]) {
             Token::True => (Exp::Bool(true), rest),
             Token::False => (Exp::Bool(false), rest),
             Token::Bang | Token::Minus => parse_prefix_exp(tokens),
-            Token::LParen => parse_grouped_exp(tokens),
             Token::If => parse_if(tokens),
             Token::Fn => parse_func(tokens),
-            _ => panic!("error prefix exp"),
+            _ => {
+                println!("{:?}", tokens);
+                panic!("error prefix exp");
+            }
         },
         _ => panic!("error prefix exp"),
     };
@@ -160,7 +162,7 @@ fn convert_op_token(token: &Token) -> Operator {
         Token::Equal => Operator::Equal,
         Token::NotEqual => Operator::NotEqual,
         Token::Bang => Operator::Bang,
-        Token::LParen => Operator::FunCall,
+        Token::LParen => Operator::Paren,
         _ => {
             print!("{:?}", token);
             panic!("error");
@@ -172,12 +174,17 @@ fn parse_prefix_exp(tokens: &[Token]) -> (Exp, &[Token]) {
     match tokens {
         [first, rest @ ..] => {
             let op = convert_op_token(first);
-            let (exp, rest) = parse_exp(rest, Precedence::PREFIX);
-            let p = Exp::PrefixExp {
-                op: op,
-                right: Box::new(exp),
-            };
-            (p, rest)
+            match op {
+                Operator::Paren => parse_grouped_exp(rest),
+                _ => {
+                    let (exp, rest) = parse_exp(rest, Precedence::PREFIX);
+                    let p = Exp::PrefixExp {
+                        op: op,
+                        right: Box::new(exp),
+                    };
+                    (p, rest)
+                }
+            }
         }
         _ => {
             panic!("error");
@@ -202,17 +209,13 @@ fn parse_infix_exp(tokens: &[Token], left: Exp) -> (Exp, &[Token]) {
             let op = convert_op_token(first);
             let p = get_precedence(first);
             let (right, rest) = parse_exp(rest, p);
-            match op {
-                Operator::FunCall => parse_func_call(left, tokens),
-                _ => {
-                    let p = Exp::InfixExp {
-                        left: Box::new(left),
-                        op: op,
-                        right: Box::new(right),
-                    };
-                    (p, rest)
-                }
-            }
+
+            let p = Exp::InfixExp {
+                left: Box::new(left),
+                op: op,
+                right: Box::new(right),
+            };
+            (p, rest)
         }
         _ => {
             panic!("error");
@@ -241,14 +244,19 @@ fn parse_let(tokens: &[Token]) -> (Statement, &[Token]) {
                 ),
             }
         }
-        _ => panic!("let error"),
+        _ => {
+            println!("{:?}", tokens);
+            panic!("let error");
+        }
     }
 }
 
 fn parse_let_rec(tokens: &[Token]) -> (Statement, &[Token]) {
     match tokens {
         [Token::Let, Token::Rec, Token::Var(s), Token::Assign, rest @ ..] => {
-            let (exp, rest) = parse_exp(rest, Precedence::LOWEST);
+            println!("parsed_let_rec");
+            let (exp, rest) = parse_func(rest);
+            println!("let rec func exp, {:?}", exp);
             let exp = match exp {
                 Exp::Func { params, body } => Exp::RecFunc {
                     name: s.clone(),
@@ -285,7 +293,10 @@ fn parse_exp_statement(tokens: &[Token]) -> (Statement, &[Token]) {
 
 fn parse_statement(tokens: &[Token]) -> (Statement, &[Token]) {
     match tokens {
-        [Token::Let, Token::Rec, _rest @ ..] => parse_let_rec(tokens),
+        [Token::Let, Token::Rec, _rest @ ..] => {
+            println!("let rec parse");
+            parse_let_rec(tokens)
+        }
         [Token::Let, _rest @ ..] => parse_let(tokens),
         [Token::Return, _rest @ ..] => parse_return(tokens),
         _ => parse_exp_statement(tokens),
@@ -313,6 +324,8 @@ fn parse_func(tokens: &[Token]) -> (Exp, &[Token]) {
         [Token::Fn, rest @ ..] => {
             let empty_vec: Vec<Exp> = vec![];
             let (params, rest) = parse_params(rest, empty_vec);
+            println!("params,{:?}", params);
+            println!("rest,{:?}", rest);
             let empty_vec: Vec<Statement> = vec![];
             let (stmts, rest) = parse_block_statements(rest, empty_vec);
             (
@@ -330,14 +343,14 @@ fn parse_func(tokens: &[Token]) -> (Exp, &[Token]) {
     }
 }
 
-fn parse_func_call(f: Exp, tokens: &[Token]) -> (Exp, &[Token]) {
-    match f {
-        Exp::Var(n) => {
+fn parse_func_call(tokens: &[Token]) -> (Exp, &[Token]) {
+    match tokens {
+        [Token::Var(n), rest @ ..] => {
             let empty_vec: Vec<Exp> = vec![];
-            let (args, rest) = parse_args(tokens, empty_vec);
+            let (args, rest) = parse_args(rest, empty_vec);
             (
                 Exp::FuncCall {
-                    funcName: Box::new(Exp::Var(n)),
+                    funcName: Box::new(Exp::Var(n.to_string())),
                     args: args,
                 },
                 rest,
@@ -351,8 +364,10 @@ fn parse_func_call(f: Exp, tokens: &[Token]) -> (Exp, &[Token]) {
 }
 
 fn parse_params(tokens: &[Token], mut acm: Vec<Exp>) -> (Parameters, &[Token]) {
+    println!("parse_params{:?}", tokens);
     match tokens {
         [Token::RParen, rest @ ..] => (acm, rest),
+        [Token::LParen, Token::RParen, rest @ ..] => (acm, rest),
         [Token::LParen, rest @ ..] => {
             let (exp, rest) = parse_exp(rest, Precedence::LOWEST);
             acm.push(exp);
@@ -370,6 +385,7 @@ fn parse_params(tokens: &[Token], mut acm: Vec<Exp>) -> (Parameters, &[Token]) {
 }
 
 fn parse_args(tokens: &[Token], mut acm: Vec<Exp>) -> (Arguments, &[Token]) {
+    println!("parse_args {:?}", tokens);
     match tokens {
         [Token::RParen, rest @ ..] => (acm, rest),
         [Token::LParen, rest @ ..] => {
@@ -558,6 +574,34 @@ fn test_parse_exp() {
 }
 
 #[test]
+fn test_parse_let_rec() {
+    let input = "let rec f = func() {
+        f();
+    };";
+    let tokens = start_to_tokenize(input);
+    let result = parse_let_rec(&tokens);
+    assert_eq!(
+        result,
+        (
+            Statement::Let {
+                id: Exp::Var("f".to_string()),
+                value: Exp::RecFunc {
+                    name: "f".to_string(),
+                    params: vec![],
+                    body: vec![Statement::ExpStmt {
+                        exp: Exp::FuncCall {
+                            funcName: Box::new(Exp::Var("f".to_string())),
+                            args: vec![]
+                        }
+                    }]
+                },
+            },
+            Vec::new().as_slice(),
+        )
+    )
+}
+
+#[test]
 fn test_parse_let() {
     let input = "let x = 2;";
     let tokens = start_to_tokenize(input);
@@ -672,6 +716,21 @@ fn test_parse_func_call() {
                     },
                     Exp::Var("y".to_string())
                 ]
+            }
+        }]
+    );
+
+    let input = "
+    add();
+    ";
+    let tokens = start_to_tokenize(input);
+    let func_call = start_to_parse(tokens.as_slice());
+    assert_eq!(
+        func_call,
+        vec![Statement::ExpStmt {
+            exp: Exp::FuncCall {
+                funcName: Box::new(Exp::Var("add".to_string())),
+                args: vec![]
             }
         }]
     );

@@ -208,7 +208,7 @@ fn tokenize_symbol<'a, 'b>(
 #[test]
 fn test_tokenize() {
     let input = "
-  let add = func(x, y) {
+  let rec add = func(x, y) {
       let a = xx_ + y_y - z < w * a / b != k == d;
   };
   if (5 < 10) {
@@ -220,6 +220,7 @@ fn test_tokenize() {
         start_to_tokenize(input),
         vec![
             Token::Let,
+            Token::Rec,
             Token::Var("add".to_string()),
             Token::Assign,
             Token::Fn,
