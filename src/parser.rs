@@ -43,7 +43,7 @@ pub enum Exp {
         body: Vec<Statement>,
     },
     RecFunc {
-        name: Box<Exp>,
+        name: String,
         params: Parameters,
         body: Vec<Statement>,
     },
@@ -251,7 +251,7 @@ fn parse_let_rec(tokens: &[Token]) -> (Statement, &[Token]) {
             let (exp, rest) = parse_exp(rest, Precedence::LOWEST);
             let exp = match exp {
                 Exp::Func { params, body } => Exp::RecFunc {
-                    name: Box::new(Exp::Var(*s)),
+                    name: s.clone(),
                     params,
                     body,
                 },

@@ -18,7 +18,6 @@ enum Value {
     },
     Null,
     Func {
-        myName: Option<String>,
         params: Vec<Exp>,
         body: Vec<Statement>,
         env: Env,
@@ -149,7 +148,7 @@ fn eval_exp(exp: Exp, env: &mut Env) -> Value {
         Exp::Func { params, body } => Value::Func {
             params: params,
             body: body,
-            env: env,
+            env: env.clone(),
         },
         Exp::FuncCall { funcName, args } => {
             let evaled_func = eval_exp(*funcName, env);
@@ -183,6 +182,20 @@ fn eval_exp(exp: Exp, env: &mut Env) -> Value {
                 _ => {
                     panic!("error");
                 }
+            }
+        }
+        Exp::RecFunc { name, params, body } => {
+            let mut my_env = env.clone();
+            let myself = Value::Func {
+                params: params.clone(),
+                body: body.clone(),
+                env: my_env,
+            };
+            my_env.env.insert(name, myself);
+            Value::Func {
+                params: params,
+                body: body,
+                env: my_env,
             }
         }
         _ => {
@@ -409,7 +422,7 @@ fn test_func_call() {
 #[test]
 fn test_rec_func_call() {
     let input = "
-    let f = func(x, acm) {
+    let rec f = func(x, acm) {
         if(x == 0) {
             return acm;
         } else {
