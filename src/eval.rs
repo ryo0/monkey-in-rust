@@ -351,6 +351,57 @@ fn test_func_call() {
     };
     let result = eval_program(p, &mut env);
     assert_eq!(result, Value::Int { val: 4 });
+
+    let input = "
+    let f = func(x) {
+        return x + 1;
+        true;
+    };
+    f(2);
+    ";
+    let tokens = start_to_tokenize(input);
+    let p = start_to_parse(tokens.as_slice());
+    let mut env = Env {
+        env: HashMap::new(),
+        next: None,
+    };
+    let result = eval_program(p, &mut env);
+    assert_eq!(result, Value::Int { val: 3 });
+
+    let input = "
+    let y = 10;
+    let f = func(x) {
+        return x + y;
+        true;
+    };
+    f(2);
+    ";
+    let tokens = start_to_tokenize(input);
+    let p = start_to_parse(tokens.as_slice());
+    let mut env = Env {
+        env: HashMap::new(),
+        next: None,
+    };
+    let result = eval_program(p, &mut env);
+    assert_eq!(result, Value::Int { val: 12 });
+
+    let input = "
+    let y = 10;
+    let f = func(x) {
+        let y = 100;
+        return x + y;
+        true;
+    };
+    f(2);
+    ";
+    let tokens = start_to_tokenize(input);
+    let p = start_to_parse(tokens.as_slice());
+    let mut env = Env {
+        env: HashMap::new(),
+        next: None,
+    };
+    let result = eval_program(p, &mut env);
+    assert_eq!(result, Value::Int { val: 102 });
 }
 
 #[test]
