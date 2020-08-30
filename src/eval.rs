@@ -277,6 +277,7 @@ fn test_eval_exp() {
     let result = eval_exp(result, &mut emp);
     assert_eq!(result, Value::Int { val: -91434 });
 }
+
 #[test]
 fn test_if_exp() {
     let input = "if(true) {
@@ -299,6 +300,7 @@ fn test_func() {
     let input = "
     func(x) {
         return 3 + 1;
+        true;
     };
     ";
     let tokens = start_to_tokenize(input);
@@ -313,13 +315,18 @@ fn test_func() {
         result,
         Value::Func {
             params: vec![s],
-            body: vec![Statement::Return {
-                exp: Exp::InfixExp {
-                    left: Box::new(Exp::Int(3)),
-                    op: Operator::Plus,
-                    right: Box::new(Exp::Int(1)),
+            body: vec![
+                Statement::Return {
+                    exp: Exp::InfixExp {
+                        left: Box::new(Exp::Int(3)),
+                        op: Operator::Plus,
+                        right: Box::new(Exp::Int(1)),
+                    }
+                },
+                Statement::ExpStmt {
+                    exp: Exp::Bool(true),
                 }
-            }],
+            ],
             env: env,
         }
     );
