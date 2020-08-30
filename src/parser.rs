@@ -42,6 +42,11 @@ pub enum Exp {
         params: Parameters,
         body: Vec<Statement>,
     },
+    RecFunc {
+        name: Box<Exp>,
+        params: Parameters,
+        body: Vec<Statement>,
+    },
     FuncCall {
         funcName: Box<Exp>,
         args: Arguments,
@@ -240,6 +245,39 @@ fn parse_let(tokens: &[Token]) -> (Statement, &[Token]) {
     }
 }
 
+fn parse_let_rec(tokens: &[Token]) -> (Statement, &[Token]) {
+    match tokens {
+        [Token::Let, Token::Rec, Token::Var(s), Token::Assign, rest @ ..] => {
+            let (exp, rest) = parse_exp(rest, Precedence::LOWEST);
+            let exp = match exp {
+                Exp::Func { params, body } => Exp::RecFunc {
+                    name: Box::new(Exp::Var(*s)),
+                    params,
+                    body,
+                },
+                _ => exp,
+            };
+            match rest {
+                [Token::SemiColon, rest @ ..] => (
+                    Statement::Let {
+                        id: Exp::Var(s.clone()),
+                        value: exp,
+                    },
+                    rest,
+                ),
+                _ => (
+                    Statement::Let {
+                        id: Exp::Var(s.clone()),
+                        value: exp,
+                    },
+                    rest,
+                ),
+            }
+        }
+        _ => panic!("let error"),
+    }
+}
+
 fn parse_exp_statement(tokens: &[Token]) -> (Statement, &[Token]) {
     let (exp, rest) = parse_exp(tokens, Precedence::LOWEST);
     (Statement::ExpStmt { exp: exp }, rest)
@@ -247,6 +285,7 @@ fn parse_exp_statement(tokens: &[Token]) -> (Statement, &[Token]) {
 
 fn parse_statement(tokens: &[Token]) -> (Statement, &[Token]) {
     match tokens {
+        [Token::Let, Token::Rec, _rest @ ..] => parse_let_rec(tokens),
         [Token::Let, _rest @ ..] => parse_let(tokens),
         [Token::Return, _rest @ ..] => parse_return(tokens),
         _ => parse_exp_statement(tokens),

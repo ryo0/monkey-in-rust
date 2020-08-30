@@ -3,6 +3,7 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum Token {
     Let,
+    Rec,
     Fn,
     True,
     False,
@@ -72,6 +73,7 @@ pub fn start_to_tokenize(input: &str) -> Vec<Token> {
 
     let mut words = vec![
         String::from("let"),
+        String::from("rec"),
         String::from("func"),
         String::from("true"),
         String::from("false"),
@@ -82,6 +84,7 @@ pub fn start_to_tokenize(input: &str) -> Vec<Token> {
 
     let mut reserved_word_tokens = vec![
         Token::Let,
+        Token::Rec,
         Token::Fn,
         Token::True,
         Token::False,

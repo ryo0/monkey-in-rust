@@ -18,6 +18,7 @@ enum Value {
     },
     Null,
     Func {
+        myName: Option<String>,
         params: Vec<Exp>,
         body: Vec<Statement>,
         env: Env,
@@ -148,7 +149,7 @@ fn eval_exp(exp: Exp, env: &mut Env) -> Value {
         Exp::Func { params, body } => Value::Func {
             params: params,
             body: body,
-            env: env.clone(),
+            env: env,
         },
         Exp::FuncCall { funcName, args } => {
             let evaled_func = eval_exp(*funcName, env);
