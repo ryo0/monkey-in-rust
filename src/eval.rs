@@ -1,11 +1,13 @@
 use crate::lexer::start_to_tokenize;
 use crate::parser::{parse_exp, start_to_parse, Exp, Operator, Precedence, Program, Statement};
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct Env {
     env: HashMap<String, Value>,
-    next: Option<Box<Env>>,
+    next: Option<Rc<RefCell<Env>>>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -20,7 +22,7 @@ enum Value {
     Func {
         params: Vec<Exp>,
         body: Vec<Statement>,
-        env: Env,
+        env: Rc<RefCell<Env>>,
     },
 }
 
@@ -30,7 +32,7 @@ fn get_value(env: &Env, key: String) -> Value {
     match v {
         Some(v) => v.clone(),
         None => match env.next.clone() {
-            Some(env_next) => get_value(&env_next, key),
+            Some(env_next) => get_value(&env_next.as_ref().borrow(), key),
             None => {
                 panic!("no value in env error");
             }
@@ -148,7 +150,7 @@ fn eval_exp(exp: Exp, env: &mut Env) -> Value {
         Exp::Func { params, body } => Value::Func {
             params: params,
             body: body,
-            env: env.clone(),
+            env: Rc::new(RefCell::new(env.clone())),
         },
         Exp::FuncCall { funcName, args } => {
             let evaled_func = eval_exp(*funcName, env);
@@ -173,7 +175,7 @@ fn eval_exp(exp: Exp, env: &mut Env) -> Value {
                     }
                     let mut new_env = Env {
                         env: new_env_hash,
-                        next: Some(Box::new(env)),
+                        next: Some(env),
                     };
                     println!("body is {:?}", body);
                     println!("env is {:?}", new_env);
@@ -185,13 +187,13 @@ fn eval_exp(exp: Exp, env: &mut Env) -> Value {
             }
         }
         Exp::RecFunc { name, params, body } => {
-            let mut my_env = env.clone();
+            let my_env: Rc<RefCell<Env>> = Rc::new(RefCell::new(env.clone()));
             let myself = Value::Func {
                 params: params.clone(),
                 body: body.clone(),
-                env: my_env,
+                env: my_env.clone(),
             };
-            my_env.env.insert(name, myself);
+            my_env.borrow_mut().env.insert(name, myself);
             Value::Func {
                 params: params,
                 body: body,
@@ -216,7 +218,7 @@ fn test_get_eval() {
     };
     let env: Env = Env {
         env: e1,
-        next: Some(Box::new(next_env)),
+        next: Some(Rc::new(RefCell::new(next_env))),
     };
     assert_eq!(get_value(&env, "x".to_string()), Value::Int { val: 1 });
     assert_eq!(get_value(&env, "y".to_string()), Value::Int { val: 3 });
@@ -344,7 +346,7 @@ fn test_func() {
                     exp: Exp::Bool(true),
                 }
             ],
-            env: env,
+            env: Rc::new(RefCell::new(env)),
         }
     );
 }
