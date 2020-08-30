@@ -32,7 +32,7 @@ fn get_value(env: &Env, key: String) -> Value {
         None => match env.next.clone() {
             Some(env_next) => get_value(&env_next, key),
             None => {
-                panic!("error");
+                panic!("no value in env error");
             }
         },
     }
@@ -90,6 +90,7 @@ fn eval_exp(exp: Exp, env: &mut Env) -> Value {
                     Operator::Slash => Value::Int { val: l / r },
                     Operator::Less => Value::Bool { val: l < r },
                     Operator::Greater => Value::Bool { val: l > r },
+                    Operator::Equal => Value::Bool { val: l == r },
                     _ => panic!("error 未対応"),
                 },
                 (Value::Bool { val: l }, Value::Bool { val: r }) => match op {
@@ -402,6 +403,28 @@ fn test_func_call() {
     };
     let result = eval_program(p, &mut env);
     assert_eq!(result, Value::Int { val: 102 });
+}
+
+#[test]
+fn test_rec_func_call() {
+    let input = "
+    let f = func(x, acm) {
+        if(x == 0) {
+            return acm;
+        } else {
+            return f(x-1, acm+1);
+        }
+    };
+    f(2);
+    ";
+    let tokens = start_to_tokenize(input);
+    let p = start_to_parse(tokens.as_slice());
+    let mut env = Env {
+        env: HashMap::new(),
+        next: None,
+    };
+    let result = eval_program(p, &mut env);
+    assert_eq!(result, Value::Int { val: 2 });
 }
 
 #[test]
