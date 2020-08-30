@@ -170,7 +170,6 @@ fn eval_exp(exp: Exp, env: &mut Env) -> Value {
                             }
                         }
                     }
-                    panic!("errorここは動いてる？");
                     let mut new_env = Env {
                         env: new_env_hash,
                         next: Some(Box::new(env)),
