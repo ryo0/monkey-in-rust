@@ -9,6 +9,8 @@ pub enum Operator {
     Bang,
     Equal,
     NotEqual,
+    Less,
+    Greater,
 }
 
 type Parameters = Vec<Exp>;

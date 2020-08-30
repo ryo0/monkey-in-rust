@@ -11,6 +11,7 @@ struct Env {
 #[derive(Debug, Clone, Eq, PartialEq)]
 enum Value {
     Int { val: i32 },
+    Bool { val: bool },
 }
 
 fn get_value(env: &Env, key: String) -> Value {
@@ -27,19 +28,15 @@ fn get_value(env: &Env, key: String) -> Value {
     }
 }
 
-fn eval_program(program: Program) -> Value {
-    let mut env = Env {
-        env: HashMap::new(),
-        next: None,
-    };
+fn eval_program(program: Program, env: &mut Env) -> Value {
     let mut value = Value::Int { val: 0 };
     for stmt in program {
         match stmt {
             Statement::Let { id, value } => {
-                eval_let(Statement::Let { id, value }, &mut env);
+                eval_let(Statement::Let { id, value }, env);
             }
             Statement::ExpStmt { exp } => {
-                let evaled_value = eval_exp(exp, &env);
+                let evaled_value = eval_exp(exp, env);
                 value = evaled_value;
             }
             _ => {
@@ -66,7 +63,7 @@ fn eval_let(letStmt: Statement, env: &mut Env) -> Value {
     }
 }
 
-fn eval_exp(exp: Exp, env: &Env) -> Value {
+fn eval_exp(exp: Exp, env: &mut Env) -> Value {
     match exp {
         Exp::InfixExp { left, op, right } => {
             let left = eval_exp(*left, env);
@@ -77,8 +74,18 @@ fn eval_exp(exp: Exp, env: &Env) -> Value {
                     Operator::Minus => Value::Int { val: l - r },
                     Operator::Asterisk => Value::Int { val: l * r },
                     Operator::Slash => Value::Int { val: l / r },
+                    Operator::Less => Value::Bool { val: l < r },
+                    Operator::Greater => Value::Bool { val: l > r },
                     _ => panic!("error 未対応"),
                 },
+                (Value::Bool { val: l }, Value::Bool { val: r }) => match op {
+                    Operator::Equal => Value::Bool { val: l == r },
+                    Operator::NotEqual => Value::Bool { val: l != r },
+                    _ => panic!("error BoolのOperator"),
+                },
+                _ => {
+                    panic!("両辺が同じ型でない中置式");
+                }
             }
         }
         Exp::PrefixExp { op, right } => {
@@ -90,10 +97,35 @@ fn eval_exp(exp: Exp, env: &Env) -> Value {
                         panic!("未対応");
                     }
                 },
+                Value::Bool { val: r } => match op {
+                    Operator::Bang => Value::Bool { val: !r },
+                    _ => {
+                        panic!("未対応");
+                    }
+                },
             }
         }
         Exp::Int(n) => Value::Int { val: n },
         Exp::Var(n) => get_value(&env, n),
+        Exp::If {
+            cond_exp,
+            then_stmts,
+            else_stmts,
+        } => {
+            let evaled_cond = eval_exp(*cond_exp, env);
+            match evaled_cond {
+                Value::Bool { val } => {
+                    if val {
+                        eval_program(then_stmts, env)
+                    } else {
+                        eval_program(else_stmts, env)
+                    }
+                }
+                _ => {
+                    panic!("条件式がboolでない");
+                }
+            }
+        }
         _ => panic!("error 未対応"),
     }
 }
@@ -194,7 +226,11 @@ fn test_eval_let() {
     x + 1";
     let tokens = start_to_tokenize(input);
     let p = start_to_parse(tokens.as_slice());
-    let result = eval_program(p);
+    let mut env = Env {
+        env: HashMap::new(),
+        next: None,
+    };
+    let result = eval_program(p, &mut env);
     assert_eq!(result, Value::Int { val: 3 });
 
     let input = "
@@ -204,7 +240,11 @@ fn test_eval_let() {
     let tokens = start_to_tokenize(input);
     let p = start_to_parse(tokens.as_slice());
     println!("{:?}", p);
-    let result = eval_program(p);
+    let mut env = Env {
+        env: HashMap::new(),
+        next: None,
+    };
+    let result = eval_program(p, &mut env);
     assert_eq!(result, Value::Int { val: -10 });
 
     let input = "
@@ -214,6 +254,10 @@ fn test_eval_let() {
     let tokens = start_to_tokenize(input);
     let p = start_to_parse(tokens.as_slice());
     println!("{:?}", p);
-    let result = eval_program(p);
+    let mut env = Env {
+        env: HashMap::new(),
+        next: None,
+    };
+    let result = eval_program(p, &mut env);
     assert_eq!(result, Value::Int { val: 10 });
 }
