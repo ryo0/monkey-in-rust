@@ -18,7 +18,7 @@ enum Value {
     },
     Null,
     Func {
-        param: Vec<Exp>,
+        params: Vec<Exp>,
         body: Vec<Statement>,
         env: Env,
     },
@@ -141,6 +141,38 @@ fn eval_exp(exp: Exp, env: &mut Env) -> Value {
                 }
                 _ => {
                     panic!("条件式がboolでない");
+                }
+            }
+        }
+        Exp::Func { params, body } => Value::Func {
+            params: params,
+            body: body,
+            env: env.clone(),
+        },
+        Exp::FuncCall { funcName, args } => {
+            let evaled_func = eval_exp(*funcName, env);
+            let mut evaled_args: Vec<Value> = vec![];
+            for arg in args {
+                let evaled_arg = eval_exp(arg, env);
+                evaled_args.push(evaled_arg);
+            }
+            match evaled_func {
+                Value::Func { params, body, env } => {
+                    for i in 0..evaled_args.len() {
+                        match params[i].clone() {
+                            Exp::Var(n) => {
+                                let env = env.clone();
+                                env.env.insert(n, evaled_args[i]);
+                            }
+                            _ => {
+                                panic!("error");
+                            }
+                        }
+                    }
+                    eval_program(body, env)
+                }
+                _ => {
+                    panic!("error");
                 }
             }
         }
