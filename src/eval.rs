@@ -170,10 +170,13 @@ fn eval_exp(exp: Exp, env: &mut Env) -> Value {
                             }
                         }
                     }
+                    panic!("errorここは動いてる？");
                     let mut new_env = Env {
                         env: new_env_hash,
                         next: Some(Box::new(env)),
                     };
+                    println!("body is {:?}", body);
+                    println!("env is {:?}", new_env);
                     eval_program(body, &mut new_env)
                 }
                 _ => {
@@ -338,8 +341,8 @@ fn test_func_call() {
     let f = func(x) {
         return 3 + 1;
         true;
-    }
-    f(3);
+    };
+    f(2);
     ";
     let tokens = start_to_tokenize(input);
     let p = start_to_parse(tokens.as_slice());
