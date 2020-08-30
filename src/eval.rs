@@ -156,20 +156,25 @@ fn eval_exp(exp: Exp, env: &mut Env) -> Value {
                 let evaled_arg = eval_exp(arg, env);
                 evaled_args.push(evaled_arg);
             }
+            let mut new_env_hash: HashMap<String, Value> = HashMap::new();
             match evaled_func {
                 Value::Func { params, body, env } => {
                     for i in 0..evaled_args.len() {
                         match params[i].clone() {
                             Exp::Var(n) => {
-                                let env = env.clone();
-                                env.env.insert(n, evaled_args[i]);
+                                let evaled_arg = evaled_args[i].clone();
+                                new_env_hash.insert(n, evaled_arg);
                             }
                             _ => {
                                 panic!("error");
                             }
                         }
                     }
-                    eval_program(body, env)
+                    let mut new_env = Env {
+                        env: new_env_hash,
+                        next: Some(Box::new(env)),
+                    };
+                    eval_program(body, &mut new_env)
                 }
                 _ => {
                     panic!("error");
