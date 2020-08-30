@@ -388,6 +388,7 @@ fn parse_params(tokens: &[Token], mut acm: Vec<Exp>) -> (Parameters, &[Token]) {
 fn parse_args(tokens: &[Token], mut acm: Vec<Exp>) -> (Arguments, &[Token]) {
     println!("parse_args {:?}", tokens);
     match tokens {
+        [Token::LParen, Token::RParen, rest @ ..] => (acm, rest),
         [Token::RParen, rest @ ..] => (acm, rest),
         [Token::LParen, rest @ ..] => {
             let (exp, rest) = parse_exp(rest, Precedence::LOWEST);
