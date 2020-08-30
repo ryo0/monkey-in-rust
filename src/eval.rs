@@ -295,11 +295,30 @@ fn test_if_exp() {
 }
 
 #[test]
+fn test_func_call() {
+    let input = "
+    let f = func(x) {
+        return 3 + 1;
+        true;
+    }
+    f(3);
+    ";
+    let tokens = start_to_tokenize(input);
+    let p = start_to_parse(tokens.as_slice());
+    let mut env = Env {
+        env: HashMap::new(),
+        next: None,
+    };
+    let result = eval_program(p, &mut env);
+    assert_eq!(result, Value::Int { val: 4 });
+}
+
+#[test]
 fn test_return_exp() {
     let input = "
     if(true) {
         let x = 2;
-        return true;
+        return x + 1;
         3;
     } else {
         return false;
@@ -312,7 +331,7 @@ fn test_return_exp() {
         next: None,
     };
     let result = eval_program(p, &mut env);
-    assert_eq!(result, Value::Bool { val: true });
+    assert_eq!(result, Value::Int { val: 3 });
 }
 
 #[test]
