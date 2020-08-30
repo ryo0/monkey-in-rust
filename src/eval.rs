@@ -27,7 +27,8 @@ enum Value {
 }
 
 fn get_value(env: &Env, key: String) -> Value {
-    println!("env is {:?}", env);
+    // println!("env is {:?}", env);
+    println!("\n-----------\n");
     let v = env.env.get(&key);
     match v {
         Some(v) => v.clone(),
@@ -162,6 +163,7 @@ fn eval_exp(exp: Exp, env: &mut Rc<RefCell<Env>>) -> Value {
             let mut new_env_hash: HashMap<String, Value> = HashMap::new();
             match evaled_func {
                 Value::Func { params, body, env } => {
+                    println!("evaled_args.len(): {:?}", evaled_args.len());
                     for i in 0..evaled_args.len() {
                         match params[i].clone() {
                             Exp::Var(n) => {
@@ -177,8 +179,7 @@ fn eval_exp(exp: Exp, env: &mut Rc<RefCell<Env>>) -> Value {
                         env: new_env_hash,
                         next: Some(env),
                     }));
-                    println!("body is {:?}", body);
-                    println!("env is {:?}", new_env);
+                    // println!("env is {:?}", new_env);
                     eval_program(body, &mut new_env)
                 }
                 _ => {
@@ -306,10 +307,10 @@ fn test_if_exp() {
     }";
     let tokens = start_to_tokenize(input);
     let p = start_to_parse(tokens.as_slice());
-    let mut env = Env {
+    let mut env = Rc::new(RefCell::new(Env {
         env: HashMap::new(),
         next: None,
-    };
+    }));
     let result = eval_program(p, &mut env);
     assert_eq!(result, Value::Int { val: 11 });
 }
@@ -423,6 +424,7 @@ fn test_func_call() {
 
 #[test]
 fn test_rec_func_call() {
+    // 無限に大きい環境を作ってしまっていると見られる。
     let input = "
     let f = func(x, acm) {
         if(x == 0) {
@@ -431,7 +433,7 @@ fn test_rec_func_call() {
             return f(x-1, acm+1);
         }
     };
-    f(1, 0);
+    f(5, 0);
     ";
     let tokens = start_to_tokenize(input);
     let p = start_to_parse(tokens.as_slice());
@@ -440,7 +442,7 @@ fn test_rec_func_call() {
         next: None,
     }));
     let result = eval_program(p, &mut env);
-    assert_eq!(result, Value::Int { val: 2 });
+    assert_eq!(result, Value::Int { val: 5 });
 }
 
 #[test]
@@ -483,7 +485,6 @@ fn test_eval_let() {
     x - y";
     let tokens = start_to_tokenize(input);
     let p = start_to_parse(tokens.as_slice());
-    println!("{:?}", p);
     let mut env = Rc::new(RefCell::new(Env {
         env: HashMap::new(),
         next: None,
