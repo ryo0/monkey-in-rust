@@ -40,7 +40,7 @@ fn get_value(env: &Env, key: String) -> Value {
     }
 }
 
-fn eval_program(program: Program, env: &mut Env) -> Value {
+fn eval_program(program: Program, env: &mut Rc<RefCell<Env>>) -> Value {
     let mut value = Value::Null;
     for stmt in program {
         match stmt {
@@ -63,14 +63,14 @@ fn eval_program(program: Program, env: &mut Env) -> Value {
     value
 }
 
-fn eval_let(letStmt: Statement, env: &mut Env) -> Value {
+fn eval_let(letStmt: Statement, env: &mut Rc<RefCell<Env>>) -> Value {
     match letStmt {
         Statement::Let {
             id: Exp::Var(n),
             value,
         } => {
             let evaled_value = eval_exp(value, env);
-            env.env.insert(n, evaled_value.clone());
+            env.borrow_mut().env.insert(n, evaled_value.clone());
             evaled_value
         }
         _ => {
@@ -79,7 +79,7 @@ fn eval_let(letStmt: Statement, env: &mut Env) -> Value {
     }
 }
 
-fn eval_exp(exp: Exp, env: &mut Env) -> Value {
+fn eval_exp(exp: Exp, env: &mut Rc<RefCell<Env>>) -> Value {
     match exp {
         Exp::InfixExp { left, op, right } => {
             let left = eval_exp(*left, env);
@@ -127,7 +127,7 @@ fn eval_exp(exp: Exp, env: &mut Env) -> Value {
         }
         Exp::Int(n) => Value::Int { val: n },
         Exp::Bool(b) => Value::Bool { val: b },
-        Exp::Var(n) => get_value(&env, n),
+        Exp::Var(n) => get_value(&env.borrow(), n),
         Exp::If {
             cond_exp,
             then_stmts,
@@ -150,7 +150,7 @@ fn eval_exp(exp: Exp, env: &mut Env) -> Value {
         Exp::Func { params, body } => Value::Func {
             params: params,
             body: body,
-            env: Rc::new(RefCell::new(env.clone())),
+            env: Rc::clone(&env),
         },
         Exp::FuncCall { funcName, args } => {
             let evaled_func = eval_exp(*funcName, env);
@@ -173,10 +173,10 @@ fn eval_exp(exp: Exp, env: &mut Env) -> Value {
                             }
                         }
                     }
-                    let mut new_env = Env {
+                    let mut new_env = Rc::new(RefCell::new(Env {
                         env: new_env_hash,
                         next: Some(env),
-                    };
+                    }));
                     println!("body is {:?}", body);
                     println!("env is {:?}", new_env);
                     eval_program(body, &mut new_env)
@@ -187,15 +187,13 @@ fn eval_exp(exp: Exp, env: &mut Env) -> Value {
             }
         }
         Exp::RecFunc { name, params, body } => {
-            let my_env: Rc<RefCell<Env>> = Rc::new(RefCell::new(env.clone()));
+            let my_env: Rc<RefCell<Env>> = env.clone();
             let myself = Value::Func {
                 params: params.clone(),
                 body: body.clone(),
                 env: my_env.clone(),
             };
-            println!("my_env1, {:?}", my_env);
-            my_env.borrow_mut().env.insert(name, myself);
-            println!("my_env2, {:?}", my_env);
+            my_env.borrow_mut().env.insert(name, myself.clone());
             Value::Func {
                 params: params,
                 body: body,
@@ -228,70 +226,70 @@ fn test_get_eval() {
 
 #[test]
 fn test_eval_exp() {
-    let mut emp: Env = Env {
+    let mut emp = Rc::new(RefCell::new(Env {
         env: HashMap::new(),
         next: None,
-    };
+    }));
     let input = "-1 - 2 * -3;";
     let tokens = start_to_tokenize(input);
     let (result, _) = parse_exp(tokens.as_slice(), Precedence::LOWEST);
     let result = eval_exp(result, &mut emp);
     assert_eq!(result, Value::Int { val: 5 });
 
-    let mut emp: Env = Env {
+    let mut emp = Rc::new(RefCell::new(Env {
         env: HashMap::new(),
         next: None,
-    };
+    }));
     let input = "(5 - (4 + 2));";
     let tokens = start_to_tokenize(input);
     let (result, _) = parse_exp(tokens.as_slice(), Precedence::LOWEST);
     let result = eval_exp(result, &mut emp);
     assert_eq!(result, Value::Int { val: -1 });
 
-    let mut emp: Env = Env {
+    let mut emp = Rc::new(RefCell::new(Env {
         env: HashMap::new(),
         next: None,
-    };
+    }));
     let input = "(5 - (4 + 2) + 1);";
     let tokens = start_to_tokenize(input);
     let (result, _) = parse_exp(tokens.as_slice(), Precedence::LOWEST);
     let result = eval_exp(result, &mut emp);
     assert_eq!(result, Value::Int { val: 0 });
 
-    let mut emp: Env = Env {
+    let mut emp = Rc::new(RefCell::new(Env {
         env: HashMap::new(),
         next: None,
-    };
+    }));
     let input = "(5 - (4 + 2) * (2 - 1) * 7 + 2);";
     let tokens = start_to_tokenize(input);
     let (result, _) = parse_exp(tokens.as_slice(), Precedence::LOWEST);
     let result = eval_exp(result, &mut emp);
     assert_eq!(result, Value::Int { val: -35 });
 
-    let mut emp: Env = Env {
+    let mut emp = Rc::new(RefCell::new(Env {
         env: HashMap::new(),
         next: None,
-    };
+    }));
     let input = "2*(3+4)-5+4;";
     let tokens = start_to_tokenize(input);
     let (result, _) = parse_exp(tokens.as_slice(), Precedence::LOWEST);
     let result = eval_exp(result, &mut emp);
     assert_eq!(result, Value::Int { val: 13 });
 
-    let mut emp: Env = Env {
+    let mut emp = Rc::new(RefCell::new(Env {
         env: HashMap::new(),
         next: None,
-    };
+    }));
     let input = "2*(3+(4*2+12*35)-54)*(2+4);";
     let tokens = start_to_tokenize(input);
     let (result, _) = parse_exp(tokens.as_slice(), Precedence::LOWEST);
     let result = eval_exp(result, &mut emp);
     assert_eq!(result, Value::Int { val: 4524 });
 
-    let mut emp: Env = Env {
+    let mut emp = Rc::new(RefCell::new(Env {
         env: HashMap::new(),
         next: None,
-    };
+    }));
     let input = "6*(53 - 4) * (4 + 5 *( 5 - (4 + 2) * (2 - 1) * 7 + 2) * 2 + 5 * 7);";
     let tokens = start_to_tokenize(input);
     let (result, _) = parse_exp(tokens.as_slice(), Precedence::LOWEST);
@@ -326,10 +324,10 @@ fn test_func() {
     ";
     let tokens = start_to_tokenize(input);
     let p = start_to_parse(tokens.as_slice());
-    let mut env = Env {
+    let mut env = Rc::new(RefCell::new(Env {
         env: HashMap::new(),
         next: None,
-    };
+    }));
     let result = eval_program(p, &mut env);
     let s = Exp::Var("x".to_string());
     assert_eq!(
@@ -348,7 +346,7 @@ fn test_func() {
                     exp: Exp::Bool(true),
                 }
             ],
-            env: Rc::new(RefCell::new(env)),
+            env: env,
         }
     );
 }
@@ -364,10 +362,10 @@ fn test_func_call() {
     ";
     let tokens = start_to_tokenize(input);
     let p = start_to_parse(tokens.as_slice());
-    let mut env = Env {
+    let mut env = Rc::new(RefCell::new(Env {
         env: HashMap::new(),
         next: None,
-    };
+    }));
     let result = eval_program(p, &mut env);
     assert_eq!(result, Value::Int { val: 4 });
 
@@ -380,10 +378,10 @@ fn test_func_call() {
     ";
     let tokens = start_to_tokenize(input);
     let p = start_to_parse(tokens.as_slice());
-    let mut env = Env {
+    let mut env = Rc::new(RefCell::new(Env {
         env: HashMap::new(),
         next: None,
-    };
+    }));
     let result = eval_program(p, &mut env);
     assert_eq!(result, Value::Int { val: 3 });
 
@@ -397,10 +395,10 @@ fn test_func_call() {
     ";
     let tokens = start_to_tokenize(input);
     let p = start_to_parse(tokens.as_slice());
-    let mut env = Env {
+    let mut env = Rc::new(RefCell::new(Env {
         env: HashMap::new(),
         next: None,
-    };
+    }));
     let result = eval_program(p, &mut env);
     assert_eq!(result, Value::Int { val: 12 });
 
@@ -415,10 +413,10 @@ fn test_func_call() {
     ";
     let tokens = start_to_tokenize(input);
     let p = start_to_parse(tokens.as_slice());
-    let mut env = Env {
+    let mut env = Rc::new(RefCell::new(Env {
         env: HashMap::new(),
         next: None,
-    };
+    }));
     let result = eval_program(p, &mut env);
     assert_eq!(result, Value::Int { val: 102 });
 }
@@ -426,21 +424,21 @@ fn test_func_call() {
 #[test]
 fn test_rec_func_call() {
     let input = "
-    let rec f = func(x, acm) {
+    let f = func(x, acm) {
         if(x == 0) {
             return acm;
         } else {
-            return 1;
+            return f(x-1, acm+1);
         }
     };
-    f(0, 0);
+    f(1, 0);
     ";
     let tokens = start_to_tokenize(input);
     let p = start_to_parse(tokens.as_slice());
-    let mut env = Env {
+    let mut env = Rc::new(RefCell::new(Env {
         env: HashMap::new(),
         next: None,
-    };
+    }));
     let result = eval_program(p, &mut env);
     assert_eq!(result, Value::Int { val: 2 });
 }
@@ -458,10 +456,10 @@ fn test_return_exp() {
     ";
     let tokens = start_to_tokenize(input);
     let p = start_to_parse(tokens.as_slice());
-    let mut env = Env {
+    let mut env = Rc::new(RefCell::new(Env {
         env: HashMap::new(),
         next: None,
-    };
+    }));
     let result = eval_program(p, &mut env);
     assert_eq!(result, Value::Int { val: 3 });
 }
@@ -472,10 +470,10 @@ fn test_eval_let() {
     x + 1";
     let tokens = start_to_tokenize(input);
     let p = start_to_parse(tokens.as_slice());
-    let mut env = Env {
+    let mut env = Rc::new(RefCell::new(Env {
         env: HashMap::new(),
         next: None,
-    };
+    }));
     let result = eval_program(p, &mut env);
     assert_eq!(result, Value::Int { val: 3 });
 
@@ -486,10 +484,10 @@ fn test_eval_let() {
     let tokens = start_to_tokenize(input);
     let p = start_to_parse(tokens.as_slice());
     println!("{:?}", p);
-    let mut env = Env {
+    let mut env = Rc::new(RefCell::new(Env {
         env: HashMap::new(),
         next: None,
-    };
+    }));
     let result = eval_program(p, &mut env);
     assert_eq!(result, Value::Int { val: -10 });
 
@@ -500,10 +498,10 @@ fn test_eval_let() {
     let tokens = start_to_tokenize(input);
     let p = start_to_parse(tokens.as_slice());
     println!("{:?}", p);
-    let mut env = Env {
+    let mut env = Rc::new(RefCell::new(Env {
         env: HashMap::new(),
         next: None,
-    };
+    }));
     let result = eval_program(p, &mut env);
     assert_eq!(result, Value::Int { val: 10 });
 }
