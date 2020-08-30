@@ -12,6 +12,7 @@ struct Env {
 enum Value {
     Int { val: i32 },
     Bool { val: bool },
+    Null,
 }
 
 fn get_value(env: &Env, key: String) -> Value {
@@ -29,7 +30,7 @@ fn get_value(env: &Env, key: String) -> Value {
 }
 
 fn eval_program(program: Program, env: &mut Env) -> Value {
-    let mut value = Value::Int { val: 0 };
+    let mut value = Value::Null;
     for stmt in program {
         match stmt {
             Statement::Let { id, value } => {
@@ -103,9 +104,13 @@ fn eval_exp(exp: Exp, env: &mut Env) -> Value {
                         panic!("未対応");
                     }
                 },
+                _ => {
+                    panic!("null");
+                }
             }
         }
         Exp::Int(n) => Value::Int { val: n },
+        Exp::Bool(b) => Value::Bool { val: b },
         Exp::Var(n) => get_value(&env, n),
         Exp::If {
             cond_exp,
@@ -126,7 +131,10 @@ fn eval_exp(exp: Exp, env: &mut Env) -> Value {
                 }
             }
         }
-        _ => panic!("error 未対応"),
+        _ => {
+            println!("{:?}", exp);
+            panic!("error 未対応");
+        }
     }
 }
 #[test]
@@ -218,6 +226,22 @@ fn test_eval_exp() {
     let (result, _) = parse_exp(tokens.as_slice(), Precedence::LOWEST);
     let result = eval_exp(result, &mut emp);
     assert_eq!(result, Value::Int { val: -91434 });
+}
+#[test]
+fn test_if_exp() {
+    let input = "if(true) {
+        1 + 10;
+    } else {
+        2 + 12;
+    }";
+    let tokens = start_to_tokenize(input);
+    let p = start_to_parse(tokens.as_slice());
+    let mut env = Env {
+        env: HashMap::new(),
+        next: None,
+    };
+    let result = eval_program(p, &mut env);
+    assert_eq!(result, Value::Int { val: 11 });
 }
 
 #[test]
