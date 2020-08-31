@@ -73,9 +73,24 @@ fn len(str: Vec<Value>) -> Value {
     }
 }
 
+fn print(str: Vec<Value>) -> Value {
+    for s in str {
+        match s {
+            Value::StringVal { val } => {
+                println!("{}", val);
+            }
+            _ => {
+                println!("{:?}", s);
+            }
+        }
+    }
+    Value::Null
+}
+
 fn eval(program: Program) -> Value {
     let mut init_env_hashmap: HashMap<String, Value> = HashMap::new();
     init_env_hashmap.insert("len".to_string(), Value::BuiltinFunc { f: len });
+    init_env_hashmap.insert("print".to_string(), Value::BuiltinFunc { f: print });
     let mut init_env = Rc::new(RefCell::new(Env {
         env: init_env_hashmap,
         next: None,
@@ -737,11 +752,18 @@ fn test_hash() {
 }
 
 #[test]
-fn test_len() {
+fn test_builtin() {
     let input = "
     len(\"aaaaa\");";
     let tokens = start_to_tokenize(input);
     let p = start_to_parse(tokens.as_slice());
     let value = eval(p);
     assert_eq!(value, Value::Int { val: 5 });
+
+    let input = "
+    print(\"hello, world!\");";
+    let tokens = start_to_tokenize(input);
+    let p = start_to_parse(tokens.as_slice());
+    let value = eval(p);
+    assert_eq!(value, Value::Null);
 }

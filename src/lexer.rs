@@ -127,6 +127,19 @@ fn get_letter(s: &[char], acm: String) -> (String, &[char]) {
     }
 }
 
+fn get_string(s: &[char], acm: String) -> (String, &[char]) {
+    match s {
+        [first, rest @ ..] => {
+            if first == &'"' {
+                (acm, rest)
+            } else {
+                get_string(rest, format!("{}{}", acm, first))
+            }
+        }
+        _ => (acm, s),
+    }
+}
+
 fn get_num(s: &[char], acm: String) -> (String, &[char]) {
     match s {
         [first, rest @ ..] if first.is_numeric() => get_num(rest, format!("{}{}", acm, first)),
@@ -182,14 +195,9 @@ fn tokenize_string<'a, 'b>(
     tokens: &'b mut Vec<Token>,
     token_map: HashMap<&String, &Token>,
 ) -> (&'a [char], &'b Vec<Token>) {
-    let (letter, rest) = get_letter(s, String::from(""));
+    let (letter, rest) = get_string(s, String::from(""));
     tokens.push(Token::StringVal(letter));
-    match rest {
-        ['"', rest @ ..] => tokenize(rest, tokens, token_map),
-        _ => {
-            panic!("string quoteが閉じてない");
-        }
-    }
+    tokenize(rest, tokens, token_map)
 }
 
 fn tokenize_symbols<'a, 'b>(
