@@ -186,20 +186,6 @@ fn eval_exp(exp: Exp, env: &mut Rc<RefCell<Env>>) -> Value {
                 }
             }
         }
-        Exp::RecFunc { name, params, body } => {
-            let my_env: Rc<RefCell<Env>> = env.clone();
-            let myself = Value::Func {
-                params: params.clone(),
-                body: body.clone(),
-                env: my_env.clone(),
-            };
-            my_env.borrow_mut().env.insert(name, myself.clone());
-            Value::Func {
-                params: params,
-                body: body,
-                env: my_env,
-            }
-        }
         _ => {
             println!("{:?}", exp);
             panic!("error 未対応");
@@ -425,7 +411,7 @@ fn test_func_call() {
 fn test_rec_func_call() {
     // 環境をprintln!しようとすると、循環参照のため無限にループが回ってしまう模様
     let input = "
-    let rec f = func(x, acm) {
+    let f = func(x, acm) {
         if(x == 0) {
             return acm;
         } else {
