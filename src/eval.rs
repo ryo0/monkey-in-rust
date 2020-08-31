@@ -691,4 +691,21 @@ fn test_hash() {
     }));
     let value = eval_program(p, &mut env);
     assert_eq!(value, Value::Int { val: 1 });
+
+    let input = "
+    let hash = {5: \"a\", 1: \"b\"};
+    hash[2+3];";
+    let tokens = start_to_tokenize(input);
+    let p = start_to_parse(tokens.as_slice());
+    let mut env = Rc::new(RefCell::new(Env {
+        env: HashMap::new(),
+        next: None,
+    }));
+    let value = eval_program(p, &mut env);
+    assert_eq!(
+        value,
+        Value::StringVal {
+            val: "a".to_string()
+        }
+    );
 }
