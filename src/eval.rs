@@ -201,6 +201,25 @@ fn eval_exp(exp: Exp, env: &mut Rc<RefCell<Env>>) -> Value {
             }
             Value::Array { array: evaled_vec }
         }
+        Exp::IndexExp { array, index } => {
+            let array = eval_exp(*array, env);
+            let index = eval_exp(*index, env);
+            match (array, index) {
+                (Value::Array { array }, Value::Int { val }) => {
+                    if val as usize >= array.len() || val < 0 {
+                        Value::Null
+                    } else {
+                        match array.get(val as usize) {
+                            Some(val) => val.clone(),
+                            None => panic!("error"),
+                        }
+                    }
+                }
+                _ => {
+                    panic!("array index error");
+                }
+            }
+        }
         _ => {
             println!("{:?}", exp);
             panic!("error 未対応");
@@ -558,4 +577,19 @@ fn test_eval_array() {
             ]
         }
     );
+}
+
+#[test]
+fn test_eval_indexing() {
+    let input = "
+    let double = func(x) {return x * 2;};
+    [1, double(2), 3*3, 4-3][0+1];";
+    let tokens = start_to_tokenize(input);
+    let p = start_to_parse(tokens.as_slice());
+    let mut env = Rc::new(RefCell::new(Env {
+        env: HashMap::new(),
+        next: None,
+    }));
+    let result = eval_program(p, &mut env);
+    assert_eq!(result, Value::Int { val: 4 });
 }
