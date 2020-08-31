@@ -31,6 +31,7 @@ pub enum Token {
     Asterisk,
     Slash,
     DoubleQuote,
+    Colon,
 }
 
 pub fn start_to_tokenize(input: &str) -> Vec<Token> {
@@ -54,6 +55,7 @@ pub fn start_to_tokenize(input: &str) -> Vec<Token> {
         String::from("\""),
         String::from("["),
         String::from("]"),
+        String::from(":"),
     ];
     let mut symbol_tokens = vec![
         Token::Equal,
@@ -75,6 +77,7 @@ pub fn start_to_tokenize(input: &str) -> Vec<Token> {
         Token::DoubleQuote,
         Token::LBracket,
         Token::RBracket,
+        Token::Colon,
     ];
 
     let mut words = vec![
@@ -228,6 +231,7 @@ fn tokenize_symbol<'a, 'b>(
 #[test]
 fn test_tokenize() {
     let input = "
+   :;
   let add = func(x, y) {
       let a = xx_ + y_y - z < w * a / b != k == d;
   };
@@ -242,6 +246,8 @@ fn test_tokenize() {
     assert_eq!(
         start_to_tokenize(input),
         vec![
+            Token::Colon,
+            Token::SemiColon,
             Token::Let,
             Token::Var("add".to_string()),
             Token::Assign,
