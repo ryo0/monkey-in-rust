@@ -223,7 +223,6 @@ fn eval_exp(exp: Exp, env: &mut Rc<RefCell<Env>>) -> Value {
             let mut new_env_hash: HashMap<String, Value> = HashMap::new();
             match evaled_func {
                 Value::Func { params, body, env } => {
-                    println!("evaled_args.len(): {:?}", evaled_args.len());
                     for i in 0..evaled_args.len() {
                         match params[i].clone() {
                             Exp::Var(n) => {
@@ -239,7 +238,6 @@ fn eval_exp(exp: Exp, env: &mut Rc<RefCell<Env>>) -> Value {
                         env: new_env_hash,
                         next: Some(env),
                     }));
-                    // println!("env is {:?}", new_env);
                     eval_program(body, &mut new_env)
                 }
                 Value::BuiltinFunc { f } => f(evaled_args),
@@ -632,7 +630,6 @@ fn test_eval_let() {
     x - 10";
     let tokens = start_to_tokenize(input);
     let p = start_to_parse(tokens.as_slice());
-    println!("{:?}", p);
     let mut env = Rc::new(RefCell::new(Env {
         env: HashMap::new(),
         next: None,

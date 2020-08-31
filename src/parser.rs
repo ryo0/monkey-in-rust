@@ -321,8 +321,6 @@ fn parse_func(tokens: &[Token]) -> (Exp, &[Token]) {
         [Token::Fn, rest @ ..] => {
             let empty_vec: Vec<Exp> = vec![];
             let (params, rest) = parse_params(rest, empty_vec);
-            println!("params,{:?}", params);
-            println!("rest,{:?}", rest);
             let empty_vec: Vec<Statement> = vec![];
             let (stmts, rest) = parse_block_statements(rest, empty_vec);
             (
@@ -361,7 +359,6 @@ fn parse_func_call(tokens: &[Token]) -> (Exp, &[Token]) {
 }
 
 fn parse_params(tokens: &[Token], mut acm: Vec<Exp>) -> (Parameters, &[Token]) {
-    println!("parse_params{:?}", tokens);
     match tokens {
         [Token::RParen, rest @ ..] => (acm, rest),
         [Token::LParen, Token::RParen, rest @ ..] => (acm, rest),
@@ -424,7 +421,6 @@ fn parse_array(tokens: &[Token], mut acm: Vec<Exp>) -> (Exp, &[Token]) {
 }
 
 fn parse_args(tokens: &[Token], mut acm: Vec<Exp>) -> (Arguments, &[Token]) {
-    println!("parse_args {:?}", tokens);
     match tokens {
         [Token::LParen, Token::RParen, rest @ ..] => (acm, rest),
         [Token::RParen, rest @ ..] => (acm, rest),
