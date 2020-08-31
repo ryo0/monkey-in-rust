@@ -35,19 +35,13 @@ enum Value {
     },
 }
 
-fn get_value_from_hash(hash: Value, key: Value) -> Value {
-    match hash {
-        Value::Hash { hash } => {
-            for key_val in hash {
-                if key == key_val.0 {
-                    return key_val.1;
-                }
-            }
-        }
-        _ => {
-            panic!("error");
+fn get_value_from_hash(hash: Vec<(Value, Value)>, key: Value) -> Value {
+    for key_val in hash {
+        if key == key_val.0 {
+            return key_val.1;
         }
     }
+
     Value::Null
 }
 
@@ -246,6 +240,7 @@ fn eval_exp(exp: Exp, env: &mut Rc<RefCell<Env>>) -> Value {
                         }
                     }
                 }
+                (Value::Hash { hash }, value) => get_value_from_hash(hash, value),
                 _ => {
                     panic!("array index error");
                 }
@@ -681,4 +676,19 @@ fn test_eval_indexing() {
     }));
     let result = eval_program(p, &mut env);
     assert_eq!(result, Value::Int { val: 3 });
+}
+
+#[test]
+fn test_hash() {
+    let input = "
+    let hash = {\"a\": 1, \"b\": 2};
+    hash[\"a\"];";
+    let tokens = start_to_tokenize(input);
+    let p = start_to_parse(tokens.as_slice());
+    let mut env = Rc::new(RefCell::new(Env {
+        env: HashMap::new(),
+        next: None,
+    }));
+    let value = eval_program(p, &mut env);
+    assert_eq!(value, Value::Int { val: 1 });
 }
