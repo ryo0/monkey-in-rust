@@ -1,4 +1,5 @@
 use crate::lexer::{start_to_tokenize, Token};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Operator {
@@ -56,6 +57,9 @@ pub enum Exp {
         left: Box<Exp>,
         index: Box<Exp>,
     },
+    HashExp {
+        hash: Vec<(Exp, Exp)>,
+    },
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -101,6 +105,7 @@ pub fn parse_exp(tokens: &[Token], p: Precedence) -> (Exp, &[Token]) {
             Token::Null => (Exp::Null, rest),
             Token::StringVal(s) => (Exp::StringVal(s.clone()), rest),
             Token::LBracket => parse_array(tokens, vec![]),
+            Token::LBrace => parse_hash(tokens, vec![]),
             Token::True => (Exp::Bool(true), rest),
             Token::False => (Exp::Bool(false), rest),
             Token::Bang | Token::Minus | Token::LParen => parse_prefix_exp(tokens),
@@ -371,6 +376,28 @@ fn parse_params(tokens: &[Token], mut acm: Vec<Exp>) -> (Parameters, &[Token]) {
             parse_params(rest, acm)
         }
         _ => {
+            panic!("error");
+        }
+    }
+}
+
+fn parse_hash(tokens: &[Token], mut acm: Vec<(Exp, Exp)>) -> (Exp, &[Token]) {
+    match tokens {
+        [Token::LBrace, Token::RBrace, rest @ ..] => (Exp::HashExp { hash: acm }, rest),
+        [Token::RBrace, rest @ ..] => (Exp::HashExp { hash: acm }, rest),
+        [Token::LBrace, rest @ ..] | [Token::Comma, rest @ ..] => {
+            let (left, rest) = parse_exp(rest, Precedence::LOWEST);
+            match rest {
+                [Token::Colon, rest @ ..] => {
+                    let (right, rest) = parse_exp(rest, Precedence::LOWEST);
+                    acm.push((left, right));
+                    parse_hash(rest, acm)
+                }
+                _ => panic!("error"),
+            }
+        }
+        _ => {
+            println!("{:?}", tokens);
             panic!("error");
         }
     }
@@ -771,6 +798,26 @@ fn test_parse_indexing() {
                     op: Operator::Plus,
                     right: Box::new(Exp::Int(1))
                 },)
+            }
+        }]
+    )
+}
+
+#[test]
+fn test_parse_hash() {
+    let input = "
+    {a: 1, b: 3};
+    ";
+    let tokens = start_to_tokenize(input);
+    let hashmap = start_to_parse(tokens.as_slice());
+    assert_eq!(
+        hashmap,
+        vec![Statement::ExpStmt {
+            exp: Exp::HashExp {
+                hash: vec![
+                    (Exp::Var("a".to_string()), Exp::Int(1)),
+                    (Exp::Var("b".to_string()), Exp::Int(3))
+                ]
             }
         }]
     )
