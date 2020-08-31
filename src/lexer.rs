@@ -20,6 +20,8 @@ pub enum Token {
     RParen,
     LBrace,
     RBrace,
+    LBracket,
+    RBracket,
     Lt,
     Gt,
     Assign,
@@ -50,6 +52,8 @@ pub fn start_to_tokenize(input: &str) -> Vec<Token> {
         String::from("*"),
         String::from("/"),
         String::from("\""),
+        String::from("["),
+        String::from("]"),
     ];
     let mut symbol_tokens = vec![
         Token::Equal,
@@ -69,6 +73,8 @@ pub fn start_to_tokenize(input: &str) -> Vec<Token> {
         Token::Asterisk,
         Token::Slash,
         Token::DoubleQuote,
+        Token::LBracket,
+        Token::RBracket,
     ];
 
     let mut words = vec![
@@ -231,7 +237,8 @@ fn test_tokenize() {
       return false;
   };
   \"let\";
-  \"string\";";
+  \"string\";
+  [a, 1, true];";
     assert_eq!(
         start_to_tokenize(input),
         vec![
@@ -287,6 +294,14 @@ fn test_tokenize() {
             Token::StringVal("let".to_string()),
             Token::SemiColon,
             Token::StringVal("string".to_string()),
+            Token::SemiColon,
+            Token::LBracket,
+            Token::Var("a".to_string()),
+            Token::Comma,
+            Token::Int(1),
+            Token::Comma,
+            Token::True,
+            Token::RBracket,
             Token::SemiColon,
         ]
     )
