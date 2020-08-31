@@ -24,6 +24,7 @@ pub enum Exp {
     Int(i32),
     Var(String),
     Bool(bool),
+    StringVal(String),
     If {
         cond_exp: Box<Exp>,
         then_stmts: Vec<Statement>,
@@ -45,6 +46,9 @@ pub enum Exp {
     FuncCall {
         func_name: Box<Exp>,
         args: Arguments,
+    },
+    Array {
+        vec: Vec<Exp>,
     },
 }
 
@@ -88,6 +92,8 @@ pub fn parse_exp(tokens: &[Token], p: Precedence) -> (Exp, &[Token]) {
         [first, rest @ ..] => match first {
             Token::Int(n) => (Exp::Int(*n), rest),
             Token::Var(v) => (Exp::Var(v.clone()), rest),
+            Token::StringVal(s) => (Exp::StringVal(s.clone()), rest),
+            Token::LBracket => parse_array(tokens, vec![]),
             Token::True => (Exp::Bool(true), rest),
             Token::False => (Exp::Bool(false), rest),
             Token::Bang | Token::Minus | Token::LParen => parse_prefix_exp(tokens),
@@ -334,6 +340,26 @@ fn parse_params(tokens: &[Token], mut acm: Vec<Exp>) -> (Parameters, &[Token]) {
             let (exp, rest) = parse_exp(rest, Precedence::LOWEST);
             acm.push(exp);
             parse_params(rest, acm)
+        }
+        _ => {
+            panic!("error");
+        }
+    }
+}
+
+fn parse_array(tokens: &[Token], mut acm: Vec<Exp>) -> (Exp, &[Token]) {
+    match tokens {
+        [Token::LBracket, Token::RBracket, rest @ ..] => (Exp::Array { vec: acm }, rest),
+        [Token::RBracket, rest @ ..] => (Exp::Array { vec: acm }, rest),
+        [Token::LBracket, rest @ ..] => {
+            let (exp, rest) = parse_exp(rest, Precedence::LOWEST);
+            acm.push(exp);
+            parse_array(rest, acm)
+        }
+        [Token::Comma, rest @ ..] => {
+            let (exp, rest) = parse_exp(rest, Precedence::LOWEST);
+            acm.push(exp);
+            parse_array(rest, acm)
         }
         _ => {
             panic!("error");
