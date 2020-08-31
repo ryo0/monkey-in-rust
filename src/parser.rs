@@ -43,7 +43,7 @@ pub enum Exp {
         body: Vec<Statement>,
     },
     FuncCall {
-        funcName: Box<Exp>,
+        func_name: Box<Exp>,
         args: Arguments,
     },
 }
@@ -307,7 +307,7 @@ fn parse_func_call(tokens: &[Token]) -> (Exp, &[Token]) {
             let (args, rest) = parse_args(rest, empty_vec);
             (
                 Exp::FuncCall {
-                    funcName: Box::new(Exp::Var(n.to_string())),
+                    func_name: Box::new(Exp::Var(n.to_string())),
                     args: args,
                 },
                 rest,
@@ -637,7 +637,7 @@ fn test_parse_func_call() {
         func_call,
         vec![Statement::ExpStmt {
             exp: Exp::FuncCall {
-                funcName: Box::new(Exp::Var("add".to_string())),
+                func_name: Box::new(Exp::Var("add".to_string())),
                 args: vec![
                     Exp::InfixExp {
                         left: Box::new(Exp::Var("x".to_string())),
@@ -659,7 +659,7 @@ fn test_parse_func_call() {
         func_call,
         vec![Statement::ExpStmt {
             exp: Exp::FuncCall {
-                funcName: Box::new(Exp::Var("add".to_string())),
+                func_name: Box::new(Exp::Var("add".to_string())),
                 args: vec![]
             }
         }]

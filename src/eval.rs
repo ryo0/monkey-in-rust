@@ -151,8 +151,8 @@ fn eval_exp(exp: Exp, env: &mut Rc<RefCell<Env>>) -> Value {
             body: body,
             env: Rc::clone(&env),
         },
-        Exp::FuncCall { funcName, args } => {
-            let evaled_func = eval_exp(*funcName, env);
+        Exp::FuncCall { func_name, args } => {
+            let evaled_func = eval_exp(*func_name, env);
             let mut evaled_args: Vec<Value> = vec![];
             for arg in args {
                 let evaled_arg = eval_exp(arg, env);
