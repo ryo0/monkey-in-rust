@@ -691,3 +691,27 @@ fn test_parse_func_call() {
         }]
     );
 }
+
+#[test]
+fn test_parse_array() {
+    let input = "
+    [x+1, true];
+    ";
+    let tokens = start_to_tokenize(input);
+    let array = start_to_parse(tokens.as_slice());
+    assert_eq!(
+        array,
+        vec![Statement::ExpStmt {
+            exp: Exp::Array {
+                vec: vec![
+                    Exp::InfixExp {
+                        left: Box::new(Exp::Var("x".to_string())),
+                        op: Operator::Plus,
+                        right: Box::new(Exp::Int(1))
+                    },
+                    Exp::Bool(true)
+                ]
+            }
+        }]
+    )
+}
