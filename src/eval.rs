@@ -24,6 +24,9 @@ enum Value {
         body: Vec<Statement>,
         env: Rc<RefCell<Env>>,
     },
+    BuiltinFunc {
+        f: fn(Vec<Value>) -> Value,
+    },
     StringVal {
         val: String,
     },
@@ -56,6 +59,28 @@ fn get_value(env: &Env, key: String) -> Value {
             }
         },
     }
+}
+
+fn len(str: Vec<Value>) -> Value {
+    if str.len() > 1 {
+        return Value::Null;
+    }
+    match str.get(0) {
+        Some(Value::StringVal { val }) => Value::Int {
+            val: val.chars().count() as i32,
+        },
+        _ => Value::Null,
+    }
+}
+
+fn eval(program: Program) -> Value {
+    let mut init_env_hashmap: HashMap<String, Value> = HashMap::new();
+    init_env_hashmap.insert("len".to_string(), Value::BuiltinFunc { f: len });
+    let mut init_env = Rc::new(RefCell::new(Env {
+        env: init_env_hashmap,
+        next: None,
+    }));
+    eval_program(program, &mut init_env)
 }
 
 fn eval_program(program: Program, env: &mut Rc<RefCell<Env>>) -> Value {
@@ -202,6 +227,7 @@ fn eval_exp(exp: Exp, env: &mut Rc<RefCell<Env>>) -> Value {
                     // println!("env is {:?}", new_env);
                     eval_program(body, &mut new_env)
                 }
+                Value::BuiltinFunc { f } => f(evaled_args),
                 _ => {
                     println!("evaled_func{:?}", evaled_func);
                     panic!("error");
@@ -708,4 +734,14 @@ fn test_hash() {
             val: "a".to_string()
         }
     );
+}
+
+#[test]
+fn test_len() {
+    let input = "
+    len(\"aaaaa\");";
+    let tokens = start_to_tokenize(input);
+    let p = start_to_parse(tokens.as_slice());
+    let value = eval(p);
+    assert_eq!(value, Value::Int { val: 5 });
 }
