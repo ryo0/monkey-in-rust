@@ -11,6 +11,7 @@ pub enum Token {
     Return,
     Var(String),
     Int(i32),
+    StringVal(String),
     Equal,
     NotEqual,
     SemiColon,
@@ -128,6 +129,7 @@ fn tokenize<'a, 'b>(
 ) -> (&'a [char], &'b Vec<Token>) {
     match s {
         [first, rest @ ..] if first == &' ' || first == &'\n' => tokenize(rest, tokens, token_map),
+        [first, rest @ ..] if first == &'"' => tokenize_string(rest, tokens, token_map),
         [first, _rest @ ..] if first.is_alphabetic() => tokenize_letter(s, tokens, token_map),
         [first, _rest @ ..] if first.is_numeric() => tokenize_num(s, tokens, token_map),
         _ => tokenize_symbols(s, tokens, token_map),
@@ -161,6 +163,21 @@ fn tokenize_letter<'a, 'b>(
     };
 
     tokenize(rest, tokens, token_map)
+}
+
+fn tokenize_string<'a, 'b>(
+    s: &'a [char],
+    tokens: &'b mut Vec<Token>,
+    token_map: HashMap<&String, &Token>,
+) -> (&'a [char], &'b Vec<Token>) {
+    let (letter, rest) = get_letter(s, String::from(""));
+    tokens.push(Token::StringVal(letter));
+    match rest {
+        ['"', rest @ ..] => tokenize(rest, tokens, token_map),
+        _ => {
+            panic!("string quoteが閉じてない");
+        }
+    }
 }
 
 fn tokenize_symbols<'a, 'b>(
@@ -212,7 +229,9 @@ fn test_tokenize() {
       return true;
   } else {
       return false;
-  }";
+  };
+  \"let\";
+  \"string\";";
     assert_eq!(
         start_to_tokenize(input),
         vec![
@@ -264,6 +283,11 @@ fn test_tokenize() {
             Token::False,
             Token::SemiColon,
             Token::RBrace,
+            Token::SemiColon,
+            Token::StringVal("let".to_string()),
+            Token::SemiColon,
+            Token::StringVal("string".to_string()),
+            Token::SemiColon,
         ]
     )
 }
