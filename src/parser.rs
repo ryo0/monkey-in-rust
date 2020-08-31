@@ -12,6 +12,7 @@ pub enum Operator {
     Less,
     Greater,
     Paren,
+    Indexing,
 }
 
 type Parameters = Vec<Exp>;
@@ -50,6 +51,10 @@ pub enum Exp {
     Array {
         vec: Vec<Exp>,
     },
+    IndexExp {
+        array: Box<Exp>,
+        index: Box<Exp>,
+    },
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -62,13 +67,13 @@ pub enum Statement {
 #[derive(Debug, PartialEq, PartialOrd)]
 pub enum Precedence {
     LOWEST,
-    EQUALS,      // ==
-    LESSGREATER, // > or <
-    SUM,         // +
-    PRODUCT,     // *
-    PREFIX,      // -X or !X
-    CALL,        // my_cunction(x){}
-    LBRACKET,    // []
+    EQUALS,
+    LESSGREATER,
+    SUM,
+    PRODUCT,
+    PREFIX,
+    CALL,
+    LBRACKET,
 }
 
 pub fn start_to_parse(tokens: &[Token]) -> Program {
@@ -124,7 +129,8 @@ fn parse_exp_core(tokens: &[Token], left: Exp, p: Precedence) -> (Exp, &[Token])
                     | Token::NotEqual
                     | Token::Lt
                     | Token::Gt
-                    | Token::LParen => parse_infix_exp(tokens, left),
+                    | Token::LParen
+                    | Token::LBracket => parse_infix_exp(tokens, left),
 
                     _ => {
                         return (left, tokens);
@@ -165,6 +171,7 @@ fn convert_op_token(token: &Token) -> Operator {
         Token::NotEqual => Operator::NotEqual,
         Token::Bang => Operator::Bang,
         Token::LParen => Operator::Paren,
+        Token::LBracket => Operator::Indexing,
         _ => {
             print!("{:?}", token);
             panic!("error");
@@ -201,6 +208,7 @@ fn get_precedence(token: &Token) -> Precedence {
         Token::Plus | Token::Minus => Precedence::SUM,
         Token::Slash | Token::Asterisk => Precedence::PRODUCT,
         Token::LParen => Precedence::CALL,
+        Token::LBracket => Precedence::LBRACKET,
         _ => Precedence::LOWEST,
     }
 }
@@ -210,14 +218,33 @@ fn parse_infix_exp(tokens: &[Token], left: Exp) -> (Exp, &[Token]) {
         [first, rest @ ..] => {
             let op = convert_op_token(first);
             let p = get_precedence(first);
-            let (right, rest) = parse_exp(rest, p);
+            match op {
+                Operator::Indexing => {
+                    let (index, rest) = parse_exp(rest, Precedence::LOWEST);
+                    match rest {
+                        [Token::RBracket, rest @ ..] => (
+                            Exp::IndexExp {
+                                array: Box::new(left),
+                                index: Box::new(index),
+                            },
+                            rest,
+                        ),
+                        _ => {
+                            panic!("erorr array[index]が閉じてない");
+                        }
+                    }
+                }
+                _ => {
+                    let (right, rest) = parse_exp(rest, p);
 
-            let p = Exp::InfixExp {
-                left: Box::new(left),
-                op: op,
-                right: Box::new(right),
-            };
-            (p, rest)
+                    let p = Exp::InfixExp {
+                        left: Box::new(left),
+                        op: op,
+                        right: Box::new(right),
+                    };
+                    (p, rest)
+                }
+            }
         }
         _ => {
             panic!("error");
@@ -711,6 +738,37 @@ fn test_parse_array() {
                     },
                     Exp::Bool(true)
                 ]
+            }
+        }]
+    )
+}
+
+#[test]
+fn test_parse_indexing() {
+    let input = "
+    [x+1, true][0+1];
+    ";
+    let tokens = start_to_tokenize(input);
+    let array = start_to_parse(tokens.as_slice());
+    assert_eq!(
+        array,
+        vec![Statement::ExpStmt {
+            exp: Exp::IndexExp {
+                array: Box::new(Exp::Array {
+                    vec: vec![
+                        Exp::InfixExp {
+                            left: Box::new(Exp::Var("x".to_string())),
+                            op: Operator::Plus,
+                            right: Box::new(Exp::Int(1))
+                        },
+                        Exp::Bool(true)
+                    ]
+                }),
+                index: Box::new(Exp::InfixExp {
+                    left: Box::new(Exp::Int(0)),
+                    op: Operator::Plus,
+                    right: Box::new(Exp::Int(1))
+                },)
             }
         }]
     )
