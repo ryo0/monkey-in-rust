@@ -26,6 +26,7 @@ pub enum Exp {
     Var(String),
     Bool(bool),
     StringVal(String),
+    Null,
     If {
         cond_exp: Box<Exp>,
         then_stmts: Vec<Statement>,
@@ -97,6 +98,7 @@ pub fn parse_exp(tokens: &[Token], p: Precedence) -> (Exp, &[Token]) {
         [first, rest @ ..] => match first {
             Token::Int(n) => (Exp::Int(*n), rest),
             Token::Var(v) => (Exp::Var(v.clone()), rest),
+            Token::Null => (Exp::Null, rest),
             Token::StringVal(s) => (Exp::StringVal(s.clone()), rest),
             Token::LBracket => parse_array(tokens, vec![]),
             Token::True => (Exp::Bool(true), rest),

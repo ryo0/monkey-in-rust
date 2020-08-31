@@ -105,6 +105,7 @@ fn eval_exp(exp: Exp, env: &mut Rc<RefCell<Env>>) -> Value {
                     Operator::NotEqual => Value::Bool { val: l != r },
                     _ => panic!("error BoolのOperator"),
                 },
+                (left, right) => Value::Bool { val: left == right },
                 _ => {
                     panic!("両辺が同じ型でない中置式");
                 }
@@ -132,6 +133,7 @@ fn eval_exp(exp: Exp, env: &mut Rc<RefCell<Env>>) -> Value {
         }
         Exp::Int(n) => Value::Int { val: n },
         Exp::Bool(b) => Value::Bool { val: b },
+        Exp::Null => Value::Null,
         Exp::StringVal(s) => Value::StringVal { val: s },
         Exp::Var(n) => get_value(&env.borrow(), n),
         Exp::If {
@@ -454,6 +456,26 @@ fn test_rec_func_call() {
     };
     f(5, 0);
     ";
+    let tokens = start_to_tokenize(input);
+    let p = start_to_parse(tokens.as_slice());
+    let mut env = Rc::new(RefCell::new(Env {
+        env: HashMap::new(),
+        next: None,
+    }));
+    let result = eval_program(p, &mut env);
+    assert_eq!(result, Value::Int { val: 5 });
+
+    // 環境をprintln!しようとすると、循環参照のため無限にループが回ってしまう模様
+    let input = "
+        let len = func(array, n) {
+            if(array[n] == null) {
+                return n;
+            } else {
+                return len(array, n+1);
+            }
+        };
+        len([1, 2, 3, 4 , 5], 0);
+        ";
     let tokens = start_to_tokenize(input);
     let p = start_to_parse(tokens.as_slice());
     let mut env = Rc::new(RefCell::new(Env {
