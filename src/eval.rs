@@ -24,6 +24,12 @@ enum Value {
         body: Vec<Statement>,
         env: Rc<RefCell<Env>>,
     },
+    StringVal {
+        val: String,
+    },
+    Array {
+        array: Vec<Value>,
+    },
 }
 
 fn get_value(env: &Env, key: String) -> Value {
@@ -126,6 +132,7 @@ fn eval_exp(exp: Exp, env: &mut Rc<RefCell<Env>>) -> Value {
         }
         Exp::Int(n) => Value::Int { val: n },
         Exp::Bool(b) => Value::Bool { val: b },
+        Exp::StringVal(s) => Value::StringVal { val: s },
         Exp::Var(n) => get_value(&env.borrow(), n),
         Exp::If {
             cond_exp,
@@ -185,6 +192,14 @@ fn eval_exp(exp: Exp, env: &mut Rc<RefCell<Env>>) -> Value {
                     panic!("error");
                 }
             }
+        }
+        Exp::Array { vec } => {
+            let mut evaled_vec: Vec<Value> = vec![];
+            for exp in vec {
+                let evaled_exp = eval_exp(exp, env);
+                evaled_vec.push(evaled_exp);
+            }
+            Value::Array { array: evaled_vec }
         }
         _ => {
             println!("{:?}", exp);
@@ -518,4 +533,29 @@ fn test_eval_let() {
     }));
     let result = eval_program(p, &mut env);
     assert_eq!(result, Value::Int { val: 10 });
+}
+
+#[test]
+fn test_eval_array() {
+    let input = "
+    let double = func(x) {return x * 2;};
+    [1, double(2), 3*3, 4-3];";
+    let tokens = start_to_tokenize(input);
+    let p = start_to_parse(tokens.as_slice());
+    let mut env = Rc::new(RefCell::new(Env {
+        env: HashMap::new(),
+        next: None,
+    }));
+    let result = eval_program(p, &mut env);
+    assert_eq!(
+        result,
+        Value::Array {
+            array: vec![
+                Value::Int { val: 1 },
+                Value::Int { val: 4 },
+                Value::Int { val: 9 },
+                Value::Int { val: 1 }
+            ]
+        }
+    );
 }
