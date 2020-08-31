@@ -604,4 +604,30 @@ fn test_eval_indexing() {
     }));
     let result = eval_program(p, &mut env);
     assert_eq!(result, Value::Null);
+
+    let input = "
+    let arrayFunc = func() {return [1, 2, 3];} ;
+    let double = func(x) {return x * 2;};
+    arrayFunc()[double(1)];";
+    let tokens = start_to_tokenize(input);
+    let p = start_to_parse(tokens.as_slice());
+    let mut env = Rc::new(RefCell::new(Env {
+        env: HashMap::new(),
+        next: None,
+    }));
+    let result = eval_program(p, &mut env);
+    assert_eq!(result, Value::Int { val: 3 });
+
+    let input = "
+    let array = [1, 2, 3] ;
+    let double = func(x) {return x * 2;};
+    array[double(1)];";
+    let tokens = start_to_tokenize(input);
+    let p = start_to_parse(tokens.as_slice());
+    let mut env = Rc::new(RefCell::new(Env {
+        env: HashMap::new(),
+        next: None,
+    }));
+    let result = eval_program(p, &mut env);
+    assert_eq!(result, Value::Int { val: 3 });
 }
