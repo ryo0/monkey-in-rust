@@ -53,7 +53,7 @@ pub enum Exp {
         vec: Vec<Exp>,
     },
     IndexExp {
-        array: Box<Exp>,
+        left: Box<Exp>,
         index: Box<Exp>,
     },
 }
@@ -226,7 +226,7 @@ fn parse_infix_exp(tokens: &[Token], left: Exp) -> (Exp, &[Token]) {
                     match rest {
                         [Token::RBracket, rest @ ..] => (
                             Exp::IndexExp {
-                                array: Box::new(left),
+                                left: Box::new(left),
                                 index: Box::new(index),
                             },
                             rest,
@@ -756,7 +756,7 @@ fn test_parse_indexing() {
         array,
         vec![Statement::ExpStmt {
             exp: Exp::IndexExp {
-                array: Box::new(Exp::Array {
+                left: Box::new(Exp::Array {
                     vec: vec![
                         Exp::InfixExp {
                             left: Box::new(Exp::Var("x".to_string())),

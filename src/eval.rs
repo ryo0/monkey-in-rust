@@ -203,8 +203,8 @@ fn eval_exp(exp: Exp, env: &mut Rc<RefCell<Env>>) -> Value {
             }
             Value::Array { array: evaled_vec }
         }
-        Exp::IndexExp { array, index } => {
-            let array = eval_exp(*array, env);
+        Exp::IndexExp { left, index } => {
+            let array = eval_exp(*left, env);
             let index = eval_exp(*index, env);
             match (array, index) {
                 (Value::Array { array }, Value::Int { val }) => {
