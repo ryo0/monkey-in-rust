@@ -30,6 +30,25 @@ enum Value {
     Array {
         array: Vec<Value>,
     },
+    Hash {
+        hash: Vec<(Value, Value)>,
+    },
+}
+
+fn get_value_from_hash(hash: Value, key: Value) -> Value {
+    match hash {
+        Value::Hash { hash } => {
+            for key_val in hash {
+                if key == key_val.0 {
+                    return key_val.1;
+                }
+            }
+        }
+        _ => {
+            panic!("error");
+        }
+    }
+    Value::Null
 }
 
 fn get_value(env: &Env, key: String) -> Value {
@@ -202,6 +221,16 @@ fn eval_exp(exp: Exp, env: &mut Rc<RefCell<Env>>) -> Value {
                 evaled_vec.push(evaled_exp);
             }
             Value::Array { array: evaled_vec }
+        }
+        Exp::HashExp { hash } => {
+            let mut evaled_hash: Vec<(Value, Value)> = vec![];
+            for exp in hash {
+                let left = eval_exp(exp.0, env);
+                let right = eval_exp(exp.1, env);
+
+                evaled_hash.push((left, right));
+            }
+            Value::Hash { hash: evaled_hash }
         }
         Exp::IndexExp { left, index } => {
             let array = eval_exp(*left, env);
