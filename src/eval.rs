@@ -81,8 +81,8 @@ fn eval_program(program: Program, env: &mut Rc<RefCell<Env>>) -> Value {
     value
 }
 
-fn eval_let(letStmt: Statement, env: &mut Rc<RefCell<Env>>) -> Value {
-    match letStmt {
+fn eval_let(let_stmt: Statement, env: &mut Rc<RefCell<Env>>) -> Value {
+    match let_stmt {
         Statement::Let {
             id: Exp::Var(n),
             value,
